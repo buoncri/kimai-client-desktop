@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Rete di sicurezza per le credenziali: la config reale sta in %APPDATA%
+# e non dovrebbe mai arrivare qui, ma se qualcuno la copia in questa
+# cartella non deve finire in un commit.
+config.json
+*.local.json
+.env

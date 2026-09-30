@@ -1,0 +1,5 @@
+# Tkinter è incluso con Python standard
+# Nessun package extra necessario per Tkinter
+# Se usi librerie aggiuntive, aggiungile qui:
+# tkinter
+# tk
