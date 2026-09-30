@@ -28,10 +28,11 @@
 Cinque classi di input o condizioni che la spec implica, che nessun test dei task esercita, ordinate per probabilità di mordere. Ogni riga ha il suo test assegnato al task che possiede il codice.
 
 1. **Server Kimai che risponde HTML invece di JSON** (proxy d'azienda, pagina di errore, redirect di autenticazione) → deve diventare un `KimaiError` con messaggio italiano, non un `JSONDecodeError` grezzo. *Test in Task 2.*
-2. **Rete che cade mentre l'attività è in corso** → il cronometro locale **non** si ferma e lo stato "in corso" resta intatto; la sincronizzazione avviene al tentativo successivo. *Test in Task 6.*
-3. **Progetto selezionato senza attività assegnate** → la cascata si ferma, il pulsante Avvia resta disabilitato e l'utente riceve un motivo, non un silenzio. *Test in Task 6.*
-4. **Token ruotato o revocato dopo la configurazione** → messaggio "credenziali non valide" e proposta di riaprire le impostazioni, senza traccia tecnica a schermo. *Test in Task 2 e Task 6.*
-5. **Chiusura della finestra col vassoio attivo e timer in corso** → l'app si nasconde, il timer continua, e l'uscita dal menu del vassoio termina **davvero** il processo (nessun thread daemon che tiene vivo Python). *Test in Task 10 sulla funzione di decisione, verifica manuale per il resto.*
+2. **Rete che cade mentre l'attività è in corso** → il cronometro locale **non** si ferma e lo stato "in corso" resta intatto; la sincronizzazione avviene al tentativo successivo. *Test in Task 7.*
+3. **Progetto selezionato senza attività assegnate** → la cascata si ferma, il pulsante Avvia resta disabilitato e l'utente riceve un motivo, non un silenzio. *Test in Task 7.*
+4. **Token ruotato o revocato dopo la configurazione** → messaggio "credenziali non valide" e proposta di riaprire le impostazioni, senza traccia tecnica a schermo. *Test in Task 2 e Task 7.*
+5. **Chiusura della finestra col vassoio attivo e timer in corso** → l'app si nasconde, il timer continua, e l'uscita dal menu del vassoio termina **davvero** il processo (nessun thread daemon che tiene vivo Python). *Test in Task 11 sulla funzione di decisione, verifica manuale per il resto.*
+6. **Elenco troncato dal server** → se l'utente ha più di `DEFAULT_PAGE_SIZE` clienti, l'app deve **dichiarare** che la lista è limitata, non mostrarla come se fosse completa. *Test in Task 2 (euristica lato client) e Task 7 (esposizione alla UI).*
 
 ---
 
@@ -51,12 +52,12 @@ Fondazione su cui tutto il resto poggia. Nessuna I/O, quindi test banali e veloc
 - Consumes: nulla (primo task).
 - Produces:
   - `kemai_client.models`: `Customer(id: int, name: str)`, `Project(id: int, name: str, customer_id: int)`, `Activity(id: int, name: str, project_id: int | None = None)`, tutti `frozen=True` e con proprietà `display -> str` che restituisce `name`.
-  - `kemai_client.api.endpoints`: costanti `BASE_PATH = "/api"`, `VERSIONS`, `CUSTOMERS`, `PROJECTS`, `ACTIVITIES`, `TIMESHEETS`, `TIMESHEET_START`, `TIMESHEET_STOP`, ciascuna come `str` costruita da `BASE_PATH`; più i **nomi dei parametri di filtro** `PARAM_CUSTOMER = "customer"` e `PARAM_PROJECT = "project"`. Anche i nomi dei parametri sono ipotesi non verificate sul Kimai 1.15 reale, quindi vivono qui con i path: correggerli dopo il probing tocca un file solo.
+  - `kemai_client.api.endpoints`: costanti `BASE_PATH = "/api"`, `VERSIONS`, `CUSTOMERS`, `PROJECTS`, `ACTIVITIES`, `TIMESHEETS`, `TIMESHEET_START`, `TIMESHEET_STOP`, ciascuna come `str` costruita da `BASE_PATH`; più i **nomi dei parametri di filtro** `PARAM_CUSTOMER = "customer"` e `PARAM_PROJECT = "project"`, e i parametri di paging `PARAM_PAGE = "page"`, `PARAM_SIZE = "size"`, con `DEFAULT_PAGE_SIZE = 200`. Anche i nomi dei parametri sono ipotesi non verificate sul Kimai 1.15 reale, quindi vivono qui con i path: correggerli dopo il probing tocca un file solo.
   - `kemai_client.api.errors`: `KimaiError(Exception)`, `KimaiAuthError(KimaiError)`, `KimaiNetworkError(KimaiError)`, `KimaiNotFoundError(KimaiError)`. Ogni `KimaiError` accetta `(message: str, status: int | None = None)` e espone `.status`.
 
 - [ ] **Step 1: Scrivi i test che falliscono**
 
-`tests/test_endpoints.py` — asserisce che ogni costante richiesta dalla spec esista e inizi con `BASE_PATH`, e che `join(BASE_PATH, "customers")` produca `"/api/customers"`. Il test deve dimostrare che i path sono derivati da `BASE_PATH` e non scritti a mano, così il probing li può correggere da un posto solo. Verifica anche che `PARAM_CUSTOMER` e `PARAM_PROJECT` siano stringhe non vuote, per lo stesso motivo: i nomi dei parametri di filtro sono ipotesi come i path e devono stare nello stesso file.
+`tests/test_endpoints.py` — asserisce che ogni costante richiesta dalla spec esista e inizi con `BASE_PATH`, e che `join(BASE_PATH, "customers")` produca `"/api/customers"`. Il test deve dimostrare che i path sono derivati da `BASE_PATH` e non scritti a mano, così il probing li può correggere da un posto solo. Verifica anche che `PARAM_CUSTOMER`, `PARAM_PROJECT`, `PARAM_PAGE`, `PARAM_SIZE` siano stringhe non vuote, per lo stesso motivo: i nomi dei parametri sono ipotesi come i path e devono stare nello stesso file. Aggiungi `test_default_page_size_is_a_positive_int` che asserisce `endpoints.DEFAULT_PAGE_SIZE > 0`, perché un valore a zero o negativo produrrebbe una richiesta priva di elementi e un elenco sempre vuoto, senza alcun errore visibile.
 
 `tests/test_models.py` — asserisce che `Customer(1, "Acme").display == "Acme"`, che due `Customer` con lo stesso `id` e `name` siano uguali (`frozen=True` dà `__eq__`), e che un `Customer` non sia hashable-dopo-mutazione, cioè che l'assegnazione di un campo sollevi `dataclasses.FrozenInstanceError`.
 
@@ -99,6 +100,11 @@ Il cuore dell'integrazione. L'iniezione di `transport` è il seam che rende tutt
 - Consumes: `Customer`, `Project`, `Activity` da `kemai_client.models`; costanti da `kemai_client.api.endpoints`; le quattro eccezioni da `kemai_client.api.errors`.
 - Produces:
   - `class KimaiClient` con `__init__(self, base_url: str, username: str, token: str, transport: Transport | None = None, timeout: float = 10.0)`.
+  - Attributo pubblico `last_list_truncated: bool`, impostato a `True` dall'ultima
+    chiamata a `list_customers`, `list_projects` o `list_activities` quando la risposta
+    contiene **esattamente** `DEFAULT_PAGE_SIZE` elementi. È l'euristica di §8.3 della
+    spec: non richiede di credere a `X-Total-Count`, che è un'ipotesi non verificata, e
+    nel caso peggiore avvisa inutilmente invece di mentire in silenzio.
   - Protocollo `Transport` in `kemai_client/api/client.py`: metodo `request(self, method: str, url: str, *, headers: dict, params: dict | None = None, json: dict | None = None, timeout: float) -> Response`. `Response` ha `.status_code: int`, `.headers: dict`, `.json() -> Any`, `.text: str`.
   - `get_version(self) -> str`
   - `test_connection(self) -> str` (alias che chiama `get_version` e solleva `KimaiAuthError` su 401/403)
@@ -128,6 +134,15 @@ Casi da coprire, con i valori esatti:
 | `test_network_error_wraps` | `Transport` che solleva `OSError` produce `KimaiNetworkError`, mai `OSError` grezza |
 | **`test_html_response_becomes_kimai_error`** | **Review Focus 1:** risposta 200 con `<html>` e `Content-Type: text/html` solleva `KimaiError`, non `JSONDecodeError` |
 | **`test_invalid_token_message`** | **Review Focus 4:** `KimaiAuthError` espone un messaggio in italiano che non contiene il token né lo status grezzo |
+| `test_get_version_reads_the_version` | da `{"version": "1.15"}` ottiene `"1.15"` |
+| `test_lists_request_explicit_page_size` | ogni `list_*` passa `params` con `endpoints.PARAM_SIZE: endpoints.DEFAULT_PAGE_SIZE`, senza affidarsi al default del server |
+| `test_exact_page_size_flags_truncation` | una risposta con **esattamente** `DEFAULT_PAGE_SIZE` elementi lascia `client.last_list_truncated is True` |
+| `test_short_page_is_not_truncation` | una risposta con meno elementi di `DEFAULT_PAGE_SIZE` lascia `client.last_list_truncated is False` |
+| `test_truncation_flag_resets_between_calls` | un elenco troncato seguito da uno completo lascia il flag a `False`: il flag descrive l'ultima chiamata, non la sessione |
+
+Le ultime quattro righe coprono la troncatura di §8.3 della spec. Costruisci le risposte
+troncate con una lista comprehension di lunghezza `endpoints.DEFAULT_PAGE_SIZE`, non
+scrivendo 200 elementi a mano.
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
@@ -146,9 +161,11 @@ Ordine di gestione in `_request`, che è il comportamento centrale del modulo:
 5. `Content-Type` senza `json` → `KimaiError("Risposta non valida dal server Kimai")` — questo è il ramo che copre il Review Focus 1
 6. altrimenti `.json()`
 
-`_coerce_list(payload, key)` gestisce sia la lista diretta sia il dizionario con una chiave, ed è il motivo per cui il parsing non si rompe su variazioni di formato.
+`_as_list(payload)` gestisce sia la lista diretta sia il dizionario con una chiave, ed è il motivo per cui il parsing non si rompe su variazioni di formato.
 
 Ogni messaggio di errore va in italiano e **mai** contiene il token o gli header.
+
+Ogni `list_*` passa `endpoints.PARAM_SIZE` con `endpoints.DEFAULT_PAGE_SIZE` nei `params`, unendo il proprio filtro se c'è. Dopo aver estratto la lista, imposta `self.last_list_truncated = len(items) >= endpoints.DEFAULT_PAGE_SIZE`. Non richiedere il totale: `X-Total-Count` è un'ipotesi non verificata, e aggiungere un test che finge di averlo letto produrrebbe un test che passa senza mai essere eseguito contro il server vero.
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
@@ -322,7 +339,7 @@ Expected: un rapporto che dice quali varianti funzionano, e in particolare confe
 
 - [ ] **Step 7: Applica le correzioni al probing, se servono**
 
-Se il rapporto smentisce le ipotesi, correggi **solo** `kemai_client/api/endpoints.py` — che contiene sia i path sia i nomi dei parametri di filtro — e, se cambia il metodo di autenticazione, **solo** il blocco header in `KimaiClient._request`. Non toccare `models.py`, `config.py` o i test già verdi: il confine esiste proprio per questo.
+Se il rapporto smentisce le ipotesi, correggi **solo** `kemai_client/api/endpoints.py` — che contiene sia i path sia i nomi dei parametri di filtro e di paging — e, se cambia il metodo di autenticazione, **solo** il blocco header in `KimaiClient._request`. Non toccare `models.py`, `config.py` o i test già verdi: il confine esiste proprio per questo.
 
 ```bash
 git add kemai_client/api/endpoints.py
@@ -331,7 +348,76 @@ git commit -m "fix: allinea gli endpoint ai risultati del probing"
 
 ---
 
-### Task 6: AppController
+### Task 6: Logging su file
+
+Non è uno slancio di ambizione: la spec promette il log in quattro punti (RF-14, §10 e due
+volte in §11) e fino a qui non esisteva. Senza questo task quelle promesse sono vacue, e
+soprattutto la regola di sicurezza "il token non finisce mai nel log" non è verificabile
+perché non c'è un log in cui il token possa finire.
+
+**Files:**
+- Create: `kemai_client/logging_setup.py`
+- Test: `tests/test_logging.py`
+
+**Interfaces:**
+- Consumes: `kemai_client.api.errors` (Task 1), per i tipi di eccezione da loggare.
+- Produces:
+  - `default_log_path() -> Path` che restituisce `Path(os.environ["APPDATA"]) / "KimaiClient" / "kimai.log"`, con lo stesso criterio di `config.default_path()`: l'app non scrive mai nelle directory dell'installazione.
+  - `setup_logging(path: Path | None = None) -> logging.Logger` che configura un `RotatingFileHandler` su `path`, con `maxBytes=512*1024` e `backupCount=3`, e restituisce il logger `kimai`. Va chiamata una sola volta da `app.main()`.
+  - `log_exception(logger: logging.Logger, exc: Exception, context: str) -> str` che registra `exc` con `logger.exception(context)`, **senza** includere il token, e restituisce la stringa del messaggio da mostrare a schermo.
+
+- [ ] **Step 1: Scrivi i test che falliscono**
+
+| Test | Asserzione |
+|---|---|
+| `test_log_exception_returns_short_message` | il valore restituito è il messaggio breve italiano, non la stringa con lo stack trace |
+| `test_log_exception_writes_detail_to_log` | il file di log contiene il testo dell'eccezione e il `context` |
+| **`test_token_never_reaches_the_log`** | passando un `KimaiAuthError` costruito con il token nella chain, il contenuto del file di log **non** contiene il token. Questo è il test che rende vera la regola di sicurezza della spec |
+| `test_logging_does_not_duplicate_handlers` | chiamare `setup_logging` due volte non raddoppia le righe nel file: senza `force=True` o un controllo esplicito, ogni avvio aggiungerebbe handler e il file crescerebbe a runtime |
+| `test_log_file_rotates` | con `maxBytes` piccolo, superata la soglia il file viene ruotato e non cresce indefinitamente |
+| `test_log_path_is_under_appdata` | `default_log_path()` termina con `KimaiClient/kimai.log` |
+
+Ogni test passa `tmp_path` a `setup_logging`, così non scrive mai nella `%APPDATA%` reale.
+
+- [ ] **Step 2: Esegui i test e verifica che falliscano**
+
+Run: `python -m pytest tests/test_logging.py -v`
+Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.logging_setup'`
+
+- [ ] **Step 3: Implementa `kemai_client/logging_setup.py`**
+
+`setup_logging` deve essere **idempotente**: prima di aggiungere l'handler, controlla se il
+logger `kemai` ne ha già uno, e in quel caso non aggiunge niente. Senza questo, ogni
+chiamata successiva raddoppia le righe di ogni messaggio.
+
+La rotazione serve perché l'app resta aperta potenzialmente per un'intera giornata di
+lavoro, e su un'app lanciata da collegamento non esiste console dove guardare.
+
+- [ ] **Step 4: Implementa `log_exception` senza perdere il segreto**
+
+Registra il contesto e l'eccezione con `logger.exception(context)`. Non aggiungere mai il
+token al testo: il modulo non lo conosce, e deve restare così. Se l'eccezione contiene
+nei suoi attributi un segreto, non serializzarla a mano: `logger.exception` registra
+l'eccezione con la sua `str()`, che per `KimaiError` è già il messaggio italiano pulito.
+
+Restituisci `str(exc)` per la UI: è l'unico punto del progetto in cui i due canali si
+separano, ed è il posto giusto perché ogni gestore di errore in seguito ci passa.
+
+- [ ] **Step 5: Esegui i test e verifica che passino**
+
+Run: `python -m pytest tests/test_logging.py -v`
+Expected: PASS
+
+- [ ] **Step 6: Committa**
+
+```bash
+git add kemai_client/logging_setup.py tests/test_logging.py
+git commit -m "feat: log su file con rotazione e separazione dei canali di errore"
+```
+
+---
+
+### Task 7: AppController
 
 Il cuore logico: stato, orchestrazione, notifica. Tutta la logica delle finestre vive qui ed è testabile senza Tkinter.
 
@@ -340,7 +426,7 @@ Il cuore logico: stato, orchestrazione, notifica. Tutta la logica delle finestre
 - Test: `tests/test_controller.py`
 
 **Interfaces:**
-- Consumes: `KimaiClient` (Task 2), `Config`, `load`, `save`, `is_configured` (Task 3), `t` (Task 4), i modelli (Task 1).
+- Consumes: `KimaiClient` (Task 2), `Config`, `load`, `save`, `is_configured` (Task 4), `t` (Task 5), `log_exception` (Task 6), i modelli (Task 1).
 - Produces:
   - `class AppController` con `__init__(self, client_factory: Callable[[str, str, str], KimaiClient] | None = None, config: Config | None = None, clock: Callable[[], float] = time.monotonic)`.
   - `subscribe(self, callback: Callable[[], None]) -> None` — registra un subscriber chiamato a ogni cambio di stato.
@@ -358,7 +444,9 @@ Il cuore logico: stato, orchestrazione, notifica. Tutta la logica delle finestre
   - `started_at_label(self) -> str` — data/ora formattata in italiano, `""` se non in corso.
   - `create_project(self, name: str, customer_id: int) -> Project` — rilancia e poi ricarica i progetti del cliente.
   - `toggle(self) -> None` — `start()` o `stop()` secondo lo stato.
-  - Attributi pubblici di sola lettura per l'UI: `customers`, `projects`, `activities`, `customer_id`, `project_id`, `activity_id`, `config`.
+  - `last_error(self) -> str` — messaggio breve dell'ultimo errore, già pronto per la UI, vuoto se non ce n'è stato nessuno.
+  - Attributi pubblici di sola lettura per l'UI: `customers`, `projects`, `activities`, `customer_id`, `project_id`, `activity_id`, `config`, `truncated`.
+  - `truncated: bool` — `True` se l'ultimo elenco caricato era troncato, copiato da `client.last_list_truncated` dopo ogni `list_*`. È ciò che alimenta l'avviso non bloccante di RF-15.
 
 - [ ] **Step 1: Scrivi i test che falliscono**
 
@@ -379,6 +467,8 @@ Test con un `FakeClient` che registra le chiamate e restituisce dati fissi, e un
 | **`test_project_without_activities_disables_start`** | **Review Focus 3:** `select_project` su un progetto senza attività lascia `can_start()` `False` e produce il messaggio di `t("err_project_no_activities")` |
 | **`test_auth_error_is_italian_and_tokenless`** | **Review Focus 4:** `KimaiAuthError` dal client fa fallire `start()` con messaggio `t("err_auth")`, senza contenere il token |
 | `test_create_project_reloads` | `create_project("Nuovo", 1)` chiama il client e la lista progetti contiene quello nuovo |
+| `test_truncated_flag_is_exposed` | dopo un `list_customers()` su un client con `last_list_truncated=True`, `controller.truncated` è `True` e i subscriber sono stati avvisati |
+| `test_errors_go_through_log_exception` | un errore del client finisce in `controller.last_error()` **e** viene passato a `log_exception`, così il dettaglio tecnico va nel log mentre a schermo resta il messaggio breve |
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
@@ -392,6 +482,8 @@ Expected: FAIL con `ImportError: cannot import name 'AppController'`
 I subscriber sono una `list[Callable[[], None]]` e `notify()` li chiama in un `try/except Exception` per ciascuno: un subscriber che solleva non deve impedire agli altri di aggiornarsi, né far cadere il controller.
 
 `start()` chiama `notify()` **prima** dell'avanzamento del tempo, così l'UI si aggiorna una sola volta per transizione.
+
+Ogni `except KimaiError` passa da `log_exception(self.logger, exc, context)` e assegna il valore restituito a `self.last_error`. Non stampare mai l'eccezione a schermo con una `messagebox` che contenga la sua `str()` grezza: è il canale che porta i dettagli tecnici, e la `str()` di un errore del client è già un messaggio italiano pulito, ma la regola vale per tutte le eccezioni, comprese quelle future.
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
@@ -407,7 +499,7 @@ git commit -m "feat: AppController con stato, cascata e cronometro"
 
 ---
 
-### Task 7: Widget e utilità UI
+### Task 8: Widget e utilità UI
 
 **Files:**
 - Create: `kemai_client/ui/__init__.py`
@@ -415,7 +507,7 @@ git commit -m "feat: AppController con stato, cascata e cronometro"
 - Test: `tests/test_widgets.py`
 
 **Interfaces:**
-- Consumes: `t` (Task 4).
+- Consumes: `t` (Task 5).
 - Produces:
   - `format_duration(seconds: int) -> str` → `"HH:MM:SS"`, con ore che non vanno a capo a 99 e senza segno per valori negativi (restituono `"00:00:00"`).
   - `class StopButton(tk.Canvas)` con `__init__(self, master, on_click: Callable[[], None], width: int = 72, height: int = 72)`, metodo `set_label(self, text: str) -> None` e `set_enabled(self, enabled: bool) -> None`.
@@ -463,14 +555,14 @@ git commit -m "feat: StopButton a ottagono e formatazione durata"
 
 ---
 
-### Task 8: Finestra principale
+### Task 9: Finestra principale
 
 **Files:**
 - Create: `kemai_client/ui/main_window.py`
-- Test: nessun test automatico; verifica manuale nel Task 11
+- Test: nessun test automatico; verifica manuale nel Task 12
 
 **Interfaces:**
-- Consumes: `AppController` (Task 6), `StopButton`, `format_duration` (Task 7), `t` (Task 4).
+- Consumes: `AppController` (Task 7), `StopButton`, `format_duration` (Task 8), `t` (Task 5).
 - Produces: `class MainWindow` con `__init__(self, root: tk.Tk, controller: AppController, on_open_settings: Callable[[], None], on_new_project: Callable[[], None])`, metodo `refresh(self) -> None` che rilegge lo stato dal controller e aggiorna tutti i widget, e `start_ticking(self) -> None` che avvia `root.after(1000, ...)`.
 
 - [ ] **Step 1: Scrivi la finestra**
@@ -510,15 +602,15 @@ git commit -m "feat: finestra principale con selettori a cascata e cronometro"
 
 ---
 
-### Task 9: Finestra impostazioni e dialog progetto
+### Task 10: Finestra impostazioni e dialog progetto
 
 **Files:**
 - Create: `kemai_client/ui/settings_window.py`
 - Create: `kemai_client/ui/project_dialog.py`
-- Test: nessun test automatico; verifica manuale nel Task 11
+- Test: nessun test automatico; verifica manuale nel Task 12
 
 **Interfaces:**
-- Consumes: `AppController` (Task 6), `Config` (Task 3), `t` (Task 4).
+- Consumes: `AppController` (Task 7), `Config` (Task 4), `t` (Task 5).
 - Produces:
   - `class SettingsWindow(tk.Toplevel)` con `__init__(self, parent, controller: AppController, on_saved: Callable[[], None] | None = None)`.
   - `class ProjectDialog(tk.Toplevel)` con `__init__(self, parent, controller: AppController, preselected_customer: int | None = None)` e attributo `result: Project | None`, che resta `None` se l'utente annulla.
@@ -553,7 +645,7 @@ git commit -m "feat: finestra impostazioni e dialog di creazione progetto"
 
 ---
 
-### Task 10: System tray e composizione
+### Task 11: System tray e composizione
 
 Il task con la logica di threading più delicata e l'unico con una condizione di uscita che può lasciare processi zombie.
 
@@ -564,7 +656,7 @@ Il task con la logica di threading più delicata e l'unico con una condizione di
 - Test: `tests/test_tray.py`
 
 **Interfaces:**
-- Consumes: `AppController` (Task 6), `Config` (Task 3), `t` (Task 4), `StopButton` per l'icona (Task 7).
+- Consumes: `AppController` (Task 7), `Config` (Task 4), `t` (Task 5), `StopButton` per l'icona (Task 8), `setup_logging` (Task 6).
 - Produces:
   - `close_behaviour(close_to_tray: bool) -> str` in `kemai_client/tray.py` che restituisce `"withdraw"` oppure `"destroy"`. È una funzione **pura**, deliberatamente, perché la sua correttezza è ciò che distingue un'uscita pulita da un processo zombie.
   - `build_menu(controller: AppController, root: tk.Tk) -> pystray.Menu` con voci Mostra, Avvia/Ferma, Esci.
@@ -626,7 +718,7 @@ git commit -m "feat: system tray con pystray e composizione dell'app"
 
 ---
 
-### Task 11: Dipendenze, documentazione e verifica finale
+### Task 12: Dipendenze, documentazione e verifica finale
 
 **Files:**
 - Modify: `requirements.txt`
@@ -666,7 +758,7 @@ Le ultime quattro righe sono la rete di sicurezza della spec §11: la config rea
 
 - [ ] **Step 3: Scrivi `README.md`**
 
-In italiano: requisiti, `pip install -r requirements.txt`, `python -m kemai_client`, come generare il token API nel profilo Kimai, il comando del probing del Task 5, e la nota che il server è in rete interna.
+In italiano: requisiti, `pip install -r requirements.txt`, `python -m kemai_client`, come generare il token API nel profilo Kimai, il comando del probing del Task 6, e la nota che il server è in rete interna.
 
 **Il README non contiene alcun token reale.** Solo la procedura per ottenerne uno.
 
@@ -699,10 +791,12 @@ git commit -m "docs: dipendenze, README e regole di ignoranza"
 
 ## Ordine di esecuzione e note
 
-I task 1→4→6 formano la catena critica e vanno eseguiti in ordine: ogni task usa le firme esatte prodotte dal precedente, così che un errore di nome si veda subito e non alla fine.
+I task 1→2→4→5→6→7 formano la catena critica e vanno eseguiti in ordine: ogni task usa le firme esatte prodotte dal precedente, così che un errore di nome si veda subito e non alla fine. Il Task 3 non ha dipendenze e si può infilare in qualsiasi momento.
 
-Il Task 5 è l'unico che richiede un'azione fuori dal repository: gira sulla rete interna e restituisce informazioni. Può essere eseguito in parallelo con i task 1-4, e conviene farlo presto, perché il Task 5 Step 7 può modificare `endpoints.py` e preferibilmente non deve accadere a metà del Task 6.
+Il Task 6 è l'unico che richiede un'azione fuori dal repository: gira sulla rete interna e restituisce informazioni. Può essere eseguito in parallelo con i task 1-5, e conviene farlo presto, perché il suo Step 7 può modificare `endpoints.py` e preferibilmente non deve accadere a metà del Task 7.
 
-I Task 7-10 dipendono dal Task 6 e non possono essere parallelizzati fra loro, perché condividono la firma di `AppController`.
+I Task 8-11 dipendono dal Task 7 e non possono essere parallelizzati fra loro, perché condividono la firma di `AppController`.
 
-I Task 8 e 9 non hanno test automatici: sono finestre, e un test che verifica "la finestra si apre" vale meno di un confronto con lo screenshot. Il Task 11 Step 5 è il loro vero banco di prova, ed è il motivo per cui gli screenshot in `img-ref/` sono parte del materiale di lavoro e non solo documentazione.
+I Task 9 e 10 non hanno test automatici: sono finestre, e un test che verifica "la finestra si apre" vale meno di un confronto con lo screenshot. Il Task 12 Step 5 è il loro vero banco di prova, ed è il motivo per cui gli screenshot in `img-ref/` sono parte del materiale di lavoro e non solo documentazione.
+
+Il Task 6 (logging) sta prima del 7 per una ragione precisa, non per ordine estetico: `AppController` instrada ogni errore attraverso `log_exception`, quindi il modulo deve esistere prima. Se il logging fosse stato messo in fondo, i task 7-11 avrebbero referenziato una funzione inesistente.

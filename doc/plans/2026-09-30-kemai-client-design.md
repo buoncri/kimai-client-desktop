@@ -1,7 +1,7 @@
 # Specifica di progetto — Kimai Desktop Client (Tkinter)
 
 **Data:** 2026-09-30
-**Stato:** design approvato, in attesa di revisione
+**Stato:** revisione 2 — lacune di paging e logging integrate il 2026-09-30
 **Riferimenti visivi:** `img-ref/kemai-running.png`, `img-ref/kemai-settings.png`, `img-ref/kemai-add-project.png`
 
 ---
@@ -53,7 +53,7 @@ l'attività e la vede registrata su Kimai.
 
 1. Lo sviluppo e i test automatici **non possono** dipendere dall'istanza reale.
 2. Il probing degli endpoint deve essere eseguito dall'utente su una macchina nella
-   rete interna, tramite lo script `tools/probe_api.py` (Task 0 del piano).
+   rete interna, tramite lo script `tools/probe_api.py` (Task 5 del piano).
 3. Tutti i path degli endpoint sono centralizzati in `kemai_client/api/endpoints.py`,
    in modo che le correzioni successive al probing tocchino un solo file.
 4. Il client deve degradare con grazia: ogni risposta HTTP non attesa diventa un
@@ -77,6 +77,7 @@ l'attività e la vede registrata su Kimai.
 | RF-12 | La chiusura della finestra nasconde l'app nel vassoio quando l'opzione è attiva |
 | RF-13 | Il menu del vassoio permette di riprendere la finestra e di uscire davvero |
 | RF-14 | Gli errori di rete o di autenticazione sono mostrati in italiano e registrati nel log |
+| RF-15 | Se un elenco risulta troncato dal server, la finestra principale lo dichiara con un avviso non bloccante |
 
 ## 5. Architettura
 
@@ -106,12 +107,13 @@ Il modulo `tray` dipende da `controller`, mai da `ui`, per non invertire il flus
 
 | File | Responsabilità unica |
 |---|---|
-| `kemai_client/models.py` | Dataclass `Customer`, `Project`, `Activity`, `Timesheet` |
+| `kemai_client/models.py` | Dataclass `Customer`, `Project`, `Activity` |
 | `kemai_client/api/endpoints.py` | **Unico** posto dove vivono i path degli endpoint |
 | `kemai_client/api/client.py` | `KimaiClient`: sessione, auth, richieste, parsing, errori |
-| `kemai_client/api/errors.py` | `KimaiError`, `KimaiAuthError`, `KimaiNetworkError` |
+| `kemai_client/api/errors.py` | `KimaiError`, `KimaiAuthError`, `KimaiNetworkError`, `KimaiNotFoundError` |
 | `kemai_client/config.py` | Dataclass `Config` + `load()` / `save()` |
 | `kemai_client/i18n.py` | Tutte le stringhe italiane in un solo dizionario |
+| `kemai_client/logging_setup.py` | Configurazione del log su file e `log_exception()` |
 | `kemai_client/controller.py` | Stato, orchestrazione, notifica ai subscriber |
 | `kemai_client/tray.py` | Icona pystray, menu, marshal sul thread Tk |
 | `kemai_client/ui/widgets.py` | `StopButton` (Canvas con ottagono), `format_duration()` |
@@ -120,6 +122,10 @@ Il modulo `tray` dipende da `controller`, mai da `ui`, per non invertire il flus
 | `kemai_client/ui/project_dialog.py` | Dialog creazione progetto |
 | `kemai_client/app.py` | Composizione: costruisce controller, finestre, tray |
 | `kemai_client/__main__.py` | Entry point |
+
+Non esiste un modello `Timesheet`: `start_timesheet()` restituisce un semplice `int`,
+l'identificativo restituito dal server. Un dataclass aggiungerebbe un livello senza
+aggiungere informazione, e l'identificatore serve solo per la chiamata di stop.
 
 ## 6. Modello di threading
 
@@ -140,16 +146,29 @@ non è un singolo file.
    `icon.stop()`.
 6. Il client HTTP non viene mai chiamato dal thread pystray, solo dal main thread.
 
+La decisione fra `withdraw` e `destroy` è affidata a una **funzione pura**,
+`close_behaviour(close_to_tray: bool) -> str` in `kemai_client/tray.py`, che restituisce
+`"withdraw"` oppure `"destroy"`. Non è un dettaglio di stile: è la condizione che
+distingue un'uscita pulita da un processo invisibile rimasto vivo. Isolandola in una
+funzione pura la rende testabile senza avviare pystray né costruire una finestra, che è
+l'unico modo per non scoprire il problema quando è ormai troppo tardi.
+
 ## 7. Design delle finestre
 
 ### 7.1 Principale (282×312)
 
 - Titolo `Kemai - Kimai client`, menu `File` / `Modifica`
 - Tre righe `Etichetta + Combobox` in sola lettura per Cliente, Progetto, Attività
-- Pulsante ottagonale grande che alterna `Avvia` e `Ferma`; disabilitato se la
-  selezione è incompleta o se un'attività è già in corso l'avvio non è applicabile
+- Pulsante ottagonale grande che alterna `Avvia` e `Ferma`
+  - etichetta `Avvia` quando nessuna attività è in corso, `Ferma` quando è in corso
+  - disabilitato se Cliente, Progetto o Attività non sono tutti selezionati
+  - disabilitato anche mentre un'attività è in corso, perché in quel momento l'unica
+    azione possibile è `Ferma` e va espressa dalla stessa etichetta, non da uno stato
+    disabilitato
 - Riga `Avviato il` con Entry in sola lettura
 - Cronometro `HH:MM:SS` in font monospaziato grande
+- Riga di avviso, inizialmente vuota, che mostra un messaggio non bloccante quando
+  un elenco risulta troncato (vedi §8.3)
 
 L'ottagono è disegnato su un `tk.Canvas` con `create_polygon`, non è un semplice
 pulsante ttk: la fedeltà visiva è il requisito, e un ttk non disegna poligoni.
@@ -187,7 +206,7 @@ Kimai 1.15 è una versione legacy. La conoscenza generale della linea 1.x indica
 - Errori in JSON con `code` e `message`
 
 **Nessuno di questi punti è stato verificato**, perché l'istanza non è raggiungibile dalla
-macchina di sviluppo. Sono **ipotesi**, e il Task 0 del piano esiste per convertirle in
+macchina di sviluppo. Sono **ipotesi**, e il Task 5 del piano esiste per convertirle in
 fatti.
 
 ### 8.2 Strategia di mitigazione
@@ -199,6 +218,38 @@ fatti.
 - Ogni risposta non attesa diventa una `KimaiError` con messaggio in italiano, non un
   crash
 
+### 8.3 Elenchi troncati: dichiarabili subito, paginabili dopo il probing
+
+Kimai 1.x pagina i risultati. Senza gestirlo, un utente con piu' clienti della pagina di
+default vedrebbe una lista troncata **senza alcun avviso**, e non potrebbe sapere che
+l'elemento cercato esiste. Su uno strumento di time tracking la conseguenza e' concreta:
+si sceglie il cliente sbagliato, o non lo si trova.
+
+Non si puo' pero' implementare subito la paginazione vera, perche' che cosa significhi
+`size` e se `X-Total-Count` esista sono anch'essi **ipotesi non verificate** (§8.1).
+Costruire un loop su un'ipotesi non verificata ripeterebbe l'errore che la centralizzazione
+di `endpoints.py` esiste per evitare.
+
+La strategia e' quindi in due tempi, con lo stesso criterio che gia' governa gli endpoint.
+
+**Prima del probing, e subito:** ogni elenco chiede esplicitamente `size=200` invece di
+affidarsi al default del server, e il client deduce la troncazione dal numero di elementi
+ricevuti. Se una risposta contiene **esattamente** `size` elementi, il client registra
+`truncated=True`; il controller lo espone e la finestra principale mostra un messaggio
+non bloccante del tipo *"Elenco clienti limitato a 200 elementi"*.
+
+E' un'euristica dichiarata, non una certezza: se ho riempito la pagina, potrebbero
+esserne altre. Nel caso peggiore l'app dice una cosa che potrebbe essere falsa
+("potrebbero essercene altre"), invece di mentire in silenzio ("non ce ne sono").
+
+**Dopo il probing:** se `page`, `size` e `X-Total-Count` risultano confermati, il client
+sostituisce l'euristica con un ciclo di paginazione reale, con un tetto di pagine come
+protezione contro un server che risponde sempre la stessa pagina. La modifica resta
+confinata a `list_customers`, `list_projects` e `list_activities`.
+
+Il parametro `size` e la sua entita' sono essi stessi ipotesi: vivono in
+`api/endpoints.py` con gli altri, e il probing li conferma o li corregge.
+
 ## 9. Persistenza della configurazione
 
 - Percorso: `%APPDATA%\KimaiClient\config.json`
@@ -209,8 +260,13 @@ fatti.
   sollevare errori
 - Il token è salvato **in chiaro**: è una scelta deliberata, dichiarata qui, perché
   l'alternativa su Windows è DPAPI e aggiunge complessità. Sono mitigate le exposure
-  peggiori: il token non compare mai nei log e il file viene creato con permessi
-  ristretti quando l'utente corrente ne è proprietario
+  peggiori: il token non compare mai nei log e il file resta sotto `%APPDATA%`, che e'
+  gia' per utente
+
+Non si dichiara alcun contenimento degli accessi tramite permessi: su Windows `os.chmod`
+mappa solo il flag di sola lettura e non limita altri utenti, quindi una simile promessa
+sarebbe falsa. Chi volesse contenere davvero il token deve passare da DPAPI o da
+Credential Manager, ed e' una decisione separata.
 
 ## 10. Gestione degli errori
 
@@ -249,6 +305,29 @@ fatti.
 - I messaggi di errore mostrati all'utente non contengono stack trace: il dettaglio
   tecnico va solo nel file di log locale
 
+### Logging
+
+Il log e' su file, in `%APPDATA%\KimaiClient\kimai.log`, con `RotatingFileHandler` e
+tetto di dimensione: l'app viene lanciata da collegamento, dove la console non esiste,
+e senza rotazione il file crescerebbe senza limite per un'app pensata per restare aperta
+tutta la giornata.
+
+`kemai_client/logging_setup.py` espone due cose:
+
+- `setup_logging(path: Path | None = None) -> None`, chiamata una volta da `app.main()`
+- `log_exception(logger, exc: Exception, context: str) -> str`, che scrive il dettaglio
+  tecnico completo, con stack trace, e **restituisce** il messaggio breve italiano da
+  mostrare a schermo
+
+Il ritorno e' la parte importante: e' l'unico punto in cui i due canali si separano, e
+quindi l'unico posto dove vale la promessa "a schermo il messaggio comprensibile, nel log
+il dettaglio". Tutti i gestori di errore passano di li', cosi' la regola non puo' essere
+dimenticata in un nuovo ramo di codice.
+
+Un test dedicato verifica che provocando un errore di autenticazione il token non
+compaia in nessun record. E' la forma piu' utile del progetto: trasforma una regola di
+sicurezza da frase documentale a proprieta' verificata.
+
 ## 12. Strategia di test
 
 `pytest`, senza bisogno di Tkinter a schermo né dell'istanza reale.
@@ -256,14 +335,28 @@ fatti.
 | File | Cosa copre |
 |---|---|
 | `tests/test_endpoints.py` | Coerenza dei path e presenza di tutti gli endpoint usati |
-| `tests/test_client.py` | URL, header, payload e parsing, tramite transport finto |
-| `tests/test_controller.py` | Cascata, start/stop, rifiuto del doppio avvio, formattazione |
+| `tests/test_models.py` | Immutabilita', uguaglianza, hashabilita', attributo `display` |
+| `tests/test_errors.py` | Gerarchia delle eccezioni, messaggi italiani, nessuna esposizione del token |
+| `tests/test_client.py` | URL, header, payload, parsing e troncatura, tramite transport finto |
+| `tests/test_controller.py` | Cascata, start/stop, rifiuto del doppio avvio, sopravvivenza a rete caduta |
 | `tests/test_config.py` | Round-trip JSON, file mancante, file corrotto, scrittura atomica |
 | `tests/test_i18n.py` | Presenza di ogni chiave usata nelle finestre |
-| `tests/test_tray.py` | Il marshal dei callback sul main thread, senza avviare pystray |
+| `tests/test_logging.py` | Il token non raggiunge mai nessun record di log |
+| `tests/test_widgets.py` | `format_duration` e geometria dell'ottagono |
+| `tests/test_tray.py` | `close_behaviour` e il marshal dei callback sul main thread, senza avviare pystray |
+| `tests/test_probe.py` | Le varianti del probing e l'assenza del token nel sorgente |
+
+I test di `format_duration` sono in `test_widgets.py` e non in `test_controller.py`: la
+formattazione della durata e' responsibility di `ui/widgets.py`, e tenere i test accanto
+alla proprieta' e' il motivo per cui la divisione fra moduli regge.
 
 Il transport finto è un oggetto con la stessa firma di `requests.Session.request` che
 restituisce risposte preparate: i test non aprono mai un socket.
+
+Il test che protegge la sicurezza piu' di tutti e' `test_logging.py`: verifica che
+provocando un errore di autenticazione il token non compaia in nessun record di log.
+Senza quel test la regola "il token non finisce mai nel log" sarebbe solo una frase in un
+documento, non una proprieta' che un cambiamento futuro non puo' rompere in silenzio.
 
 ## 13. Strategia di rilascio
 
@@ -278,9 +371,11 @@ restituisce risposte preparate: i test non aprono mai un socket.
 
 | Rischio | Impatto | Mitigazione |
 |---|---|---|
-| Endpoint Kimai 1.15 diversi dalle ipotesi | Alto | Task 0 di probing; path centralizzati in `endpoints.py` |
+| Endpoint Kimai 1.15 diversi dalle ipotesi | Alto | Task 5 di probing; path centralizzati in `endpoints.py` |
 | Autenticazione non via header ma via Basic auth | Alto | Il probing tenta entrambe; `client.py` ha un solo punto di auth |
 | Comportamento del vassoio atipico su Windows | Medio | Il piano prevede una verifica manuale dedicata con passi espliciti |
 | `pystray` richiede un loop di eventi proprio | Medio | `setup()` + `run_detached()` su thread daemon, come da documentazione |
 | Differenze di resa dei font rispetto agli screenshot | Basso | Il piano prevede un confronto visivo screenshot per screenshot |
 | Il server non risolve dalla macchina di sviluppo | Medio già gestito | Tutti i test sono offline; il probing è un task manuale |
+| `size` non supportato dal Kimai 1.15, quindi elenchi sempre troncati a 200 | Medio | Il parametro resta in `endpoints.py`; il probing lo conferma. Nel caso peggiore l'avviso di §8.3 e' rumoroso ma mai falso silenziosamente |
+| Il log contiene dati personali in chiaro su una macchina condivisa | Basso | Il file sta in `%APPDATA%` ed e' escluso da git; un domani utente per utente e' la mitigazione reale |
