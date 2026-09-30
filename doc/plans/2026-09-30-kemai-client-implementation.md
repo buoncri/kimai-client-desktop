@@ -10,6 +10,82 @@
 
 **Spec:** `doc/plans/2026-09-30-kemai-client-design.md` — il piano argomenta dalla spec, quindi la spec viaggia con il piano; chi esegue legge entrambi.
 
+## Preparazione ambiente (una tantum, prima del Task 1)
+
+**`python` non funziona su questa macchina.** Il comando `python` nel PATH è uno stub
+di 0 byte del Microsoft Store, non un interprete: si presenta come Python ma non
+esegue nulla. **Non tentare di usarlo e non tentare di diagnosticarlo**: è noto.
+
+Tutti i comandi di questo piano usano quindi l'interprete dell'ambiente virtuale,
+`.venv\Scripts\python.exe`, che va creato una volta sola:
+
+```bash
+"C:\Users\luca\AppData\Local\Programs\Python\Python312\python.exe" -m venv .venv
+.venv\Scripts\python.exe -m pip install "requests>=2.31" "pystray>=0.19" "Pillow>=10.0" "pytest>=8.0"
+```
+
+Se `.venv\Scripts\python.exe` esiste già, salta questa sezione. La directory `.venv` è
+in `.gitignore` e non va committata.
+
+Il comando da usare in ogni task, senza eccezioni:
+
+```
+.venv\Scripts\python.exe -m pytest <percorso> -v
+```
+
+## Stato di esecuzione
+
+| Task | Stato | Commit |
+|---|---|---|
+| 1. Modelli, endpoint ed errori | **fatto** | `1493882` |
+| 2. KimaiClient | **fatto** (manca solo l'estensione del paging, vedi sotto) | `e7bd174` |
+| 3. Configurazione persistente | da fare | — |
+| 4. Stringhe italiane | da fare | — |
+| 5. Script di probing | da fare | — |
+| 6. Logging su file | da fare | — |
+| 7. AppController | da fare | — |
+| 8. Widget e utilità UI | da fare | — |
+| 9. Finestra principale | da fare | — |
+| 10. Finestra impostazioni e dialog | da fare | — |
+| 11. System tray e composizione | da fare | — |
+| 12. Dipendenze, documentazione, verifica | da fare | — |
+
+**Il Task 1 è già completo: non lo rifare.** Se devi riprenderlo, verifica e basta:
+`.venv\Scripts\python.exe -m pytest tests/test_models.py tests/test_endpoints.py tests/test_errors.py -v` deve dare 28 PASS, poi passa al Task 3.
+
+**Il Task 2 è parzialmente completo.** Il client esiste e ha 32 test verdi, ma **non
+ha ancora l'estensione del paging** (i quattro test `test_lists_request_explicit_page_size`,
+`test_exact_page_size_flags_truncation`, `test_short_page_is_not_truncation`,
+`test_truncation_flag_resets_between_calls`) né le costanti `PARAM_PAGE`, `PARAM_SIZE`,
+`DEFAULT_PAGE_SIZE` in `endpoints.py`. Ecco il lavoro residuo esatto:
+
+1. in `kemai_client/api/endpoints.py` aggiungi `PARAM_PAGE = "page"`, `PARAM_SIZE = "size"`, `DEFAULT_PAGE_SIZE = 200`
+2. in `tests/test_endpoints.py` aggiungi `test_default_page_size_is_a_positive_int`
+3. in `tests/test_client.py` aggiungi i quattro test di paging e `test_get_version_reads_the_version`
+4. in `kemai_client/api/client.py` fai passare `PARAM_SIZE` nei `params` di ogni `list_*`, e imposta `self.last_list_truncated`
+5. verifica con `.venv\Scripts\python.exe -m pytest -v` — devono dare 66 PASS
+
+Nel repository esiste anche `app_gui.py`, un demo Tkinter generico **non collegato a
+questo progetto**, presente prima del suo inizio. Non lo modificare, non lo usare come
+riferimento, non lo cancellare: non è parte dell'architettura descritta qui.
+
+## Passaggi riservati all'umano
+
+Alcuni step di questo piano non sono eseguibili da un agente: richiedono di guardare una
+finestra a schermo, o una macchina collegata alla rete interna. Sono marcati
+`**[UMANO]**`.
+
+**Un agente non deve eseguirli, non deve simularli, e soprattutto non deve dichiarare
+fatto un passo che non ha potuto verificare.** Il comportamento corretto è eseguire tutto
+il resto e riferire esplicitamente quale passo resta in carico all'umano. Un agente che
+scrive "verificato a mano" senza aver visto nulla sta mentendo, ed è peggio di un agente
+che si ferma e lo dichiara.
+
+Elenco completo dei passaggi umani: Task 5 Step 6 e 7, Task 9 Step 4, Task 10 Step 4,
+Task 11 Step 7, Task 12 Step 5.
+
+Tutti gli altri step sono automatizzabili e **devono** essere eseguiti davvero.
+
 ## Global Constraints
 
 - Python 3.10 o superiore.
@@ -25,7 +101,7 @@
 
 ## Review Focus
 
-Cinque classi di input o condizioni che la spec implica, che nessun test dei task esercita, ordinate per probabilità di mordere. Ogni riga ha il suo test assegnato al task che possiede il codice.
+Sei classi di input o condizioni che la spec implica, che nessun test dei task esercita, ordinate per probabilità di mordere. Ogni riga ha il suo test assegnato al task che possiede il codice.
 
 1. **Server Kimai che risponde HTML invece di JSON** (proxy d'azienda, pagina di errore, redirect di autenticazione) → deve diventare un `KimaiError` con messaggio italiano, non un `JSONDecodeError` grezzo. *Test in Task 2.*
 2. **Rete che cade mentre l'attività è in corso** → il cronometro locale **non** si ferma e lo stato "in corso" resta intatto; la sincronizzazione avviene al tentativo successivo. *Test in Task 7.*
@@ -36,7 +112,11 @@ Cinque classi di input o condizioni che la spec implica, che nessun test dei tas
 
 ---
 
-### Task 1: Modelli, endpoint ed errori
+### Task 1: Modelli, endpoint ed errori — ✅ FATTO (commit `1493882`)
+
+**Non rifarlo.** Se devi solo riprenderlo, verifica con
+`.venv\Scripts\python.exe -m pytest tests/test_models.py tests/test_endpoints.py tests/test_errors.py -v`
+che dia 28 PASS, e vai al Task 3.
 
 Fondazione su cui tutto il resto poggia. Nessuna I/O, quindi test banali e veloci.
 
@@ -63,7 +143,7 @@ Fondazione su cui tutto il resto poggia. Nessuna I/O, quindi test banali e veloc
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_models.py tests/test_endpoints.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_models.py tests/test_endpoints.py -v`
 Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client'`
 
 - [ ] **Step 3: Implementa i tre moduli**
@@ -76,7 +156,7 @@ Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client'`
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_models.py tests/test_endpoints.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_models.py tests/test_endpoints.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -88,7 +168,10 @@ git commit -m "feat: modelli, endpoint ed errori del client Kimai"
 
 ---
 
-### Task 2: KimaiClient
+### Task 2: KimaiClient — ⚠️ PARZIALE (commit `e7bd174`)
+
+**Non riscrivere il client: esiste già e ha 32 test verdi.** Manca solo l'estensione del
+paging, descritta in fondo a questo task. Parti da lì, non dall'inizio.
 
 Il cuore dell'integrazione. L'iniezione di `transport` è il seam che rende tutto testabile offline.
 
@@ -146,7 +229,7 @@ scrivendo 200 elementi a mano.
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_client.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_client.py -v`
 Expected: FAIL con `ImportError: cannot import name 'KimaiClient'`
 
 - [ ] **Step 3: Implementa `KimaiClient` in `kemai_client/api/client.py`**
@@ -169,7 +252,7 @@ Ogni `list_*` passa `endpoints.PARAM_SIZE` con `endpoints.DEFAULT_PAGE_SIZE` nei
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_client.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_client.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -177,6 +260,58 @@ Expected: PASS
 ```bash
 git add kemai_client/api/client.py tests/test_client.py
 git commit -m "feat: KimaiClient con transport iniettabile e gestione errori"
+```
+
+#### Lavoro residuo: estensione del paging
+
+I passi da 1 a 5 sono **già eseguiti** (commit `e7bd174`): `client.py` esiste, ha
+`FakeTransport` in `tests/test_client.py` e 32 test verdi. Esegui solo questi cinque passi.
+
+- [ ] **Step R1: Aggiungi le costanti di paging a `kemai_client/api/endpoints.py`**
+
+```python
+PARAM_PAGE = "page"
+PARAM_SIZE = "size"
+DEFAULT_PAGE_SIZE = 200
+```
+
+- [ ] **Step R2: Aggiungi `test_default_page_size_is_a_positive_int` a `tests/test_endpoints.py`**
+
+Asserisce `endpoints.DEFAULT_PAGE_SIZE > 0` e che sia un `int`. Un valore zero o negativo
+produrrebbe una richiesta priva di elementi e un elenco sempre vuoto, senza alcun errore
+visibile.
+
+- [ ] **Step R3: Aggiungi i cinque test di paging a `tests/test_client.py`**
+
+Riutilizza il `FakeTransport` e `make_client` già presenti in quel file: non crearne uno
+nuovo. Costruisci la risposta troncata con
+`[{"id": i, "name": f"C{i}"} for i in range(endpoints.DEFAULT_PAGE_SIZE)]`, senza
+scrivere 200 elementi a mano. I test sono `test_get_version_reads_the_version`,
+`test_lists_request_explicit_page_size`, `test_exact_page_size_flags_truncation`,
+`test_short_page_is_not_truncation`, `test_truncation_flag_resets_between_calls`.
+
+- [ ] **Step R4: Fai fallire i test**
+
+Run: `.venv\Scripts\python.exe -m pytest tests/test_client.py -v`
+Expected: FAIL. I test nuovi falliscono perché `last_list_truncated` non esiste e
+`DEFAULT_PAGE_SIZE` non è importabile da `endpoints`.
+
+- [ ] **Step R5: Implementa in `kemai_client/api/client.py`**
+
+In `__init__` aggiungi `self.last_list_truncated: bool = False`. In ogni `list_*` aggiungi
+`endpoints.PARAM_SIZE` ai `params` con il valore di `endpoints.DEFAULT_PAGE_SIZE`, e dopo
+aver estratto la lista da `_as_list` imposta `self.last_list_truncated = len(items) >= endpoints.DEFAULT_PAGE_SIZE`.
+Non leggere `X-Total-Count`: è un'ipotesi non verificata, e costruirci sopra produrrebbe
+un test che passa senza essere mai stato eseguito contro il server vero.
+
+- [ ] **Step R6: Verifica e committa**
+
+Run: `.venv\Scripts\python.exe -m pytest -v`
+Expected: 66 PASS, nessuno fallito.
+
+```bash
+git add kemai_client/api/client.py kemai_client/api/endpoints.py tests/test_client.py tests/test_endpoints.py
+git commit -m "feat: dichiara la troncatura degli elenchi invece di tacere"
 ```
 
 ---
@@ -212,7 +347,7 @@ Tutti i test devono scrivere in `tmp_path`, **mai** nella `%APPDATA%` reale.
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_config.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_config.py -v`
 Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.config'`
 
 - [ ] **Step 3: Implementa `kemai_client/config.py`**
@@ -223,7 +358,7 @@ Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.config'`
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_config.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_config.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -255,7 +390,7 @@ Aggiungi `test_t_formats_kwargs` con chiave `status_connected = "Connesso a Kima
 
 - [ ] **Step 2: Esegui il test e verifica che fallisca**
 
-Run: `python -m pytest tests/test_i18n.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_i18n.py -v`
 Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.i18n'`
 
 - [ ] **Step 3: Implementa `kemai_client/i18n.py`**
@@ -264,7 +399,7 @@ Dizionario con le 31 chiavi elencate, valori in italiano. `btn_start = "Avvia"`,
 
 - [ ] **Step 4: Esegui il test e verifica che passi**
 
-Run: `python -m pytest tests/test_i18n.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_i18n.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -304,7 +439,7 @@ git commit -m "feat: dizionario stringhe italiane"
 
 - [ ] **Step 2: Esegui il test e verifica che fallisca**
 
-Run: `python -m pytest tests/test_probe.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_probe.py -v`
 Expected: FAIL con `ModuleNotFoundError`
 
 - [ ] **Step 3: Implementa `tools/probe_api.py`**
@@ -315,7 +450,7 @@ Il token si legge da `getpass.getpass("Token API: ")`, **mai** da un argomento d
 
 - [ ] **Step 4: Esegui il test e verifica che passi**
 
-Run: `python -m pytest tests/test_probe.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_probe.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -325,19 +460,19 @@ git add tools/probe_api.py tests/test_probe.py
 git commit -m "feat: script di probing degli endpoint Kimai"
 ```
 
-- [ ] **Step 6: Esegui il probing sulla rete interna**
+- [ ] **Step 6: [UMANO] Esegui il probing sulla rete interna**
 
 Run, **da una macchina collegata alla rete interna**, con `luca` come utente e il token API personale:
 
 ```bash
-python tools/probe_api.py https://crono.bonificaumbria.local luca
+.venv\Scripts\python.exe tools/probe_api.py https://crono.bonificaumbria.local luca
 ```
 
 Il prompt chiede il token. **Incolla il nuovo token ruotato, non quello già finito in questa chat.**
 
 Expected: un rapporto che dice quali varianti funzionano, e in particolare conferma o smentisce `X-AUTH-USER`/`X-AUTH-TOKEN` e il percorso `/api/versions`.
 
-- [ ] **Step 7: Applica le correzioni al probing, se servono**
+- [ ] **Step 7: [UMANO] Applica le correzioni al probing, se servono**
 
 Se il rapporto smentisce le ipotesi, correggi **solo** `kemai_client/api/endpoints.py` — che contiene sia i path sia i nomi dei parametri di filtro e di paging — e, se cambia il metodo di autenticazione, **solo** il blocco header in `KimaiClient._request`. Non toccare `models.py`, `config.py` o i test già verdi: il confine esiste proprio per questo.
 
@@ -381,7 +516,7 @@ Ogni test passa `tmp_path` a `setup_logging`, così non scrive mai nella `%APPDA
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_logging.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_logging.py -v`
 Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.logging_setup'`
 
 - [ ] **Step 3: Implementa `kemai_client/logging_setup.py`**
@@ -405,7 +540,7 @@ separano, ed è il posto giusto perché ogni gestore di errore in seguito ci pas
 
 - [ ] **Step 5: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_logging.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_logging.py -v`
 Expected: PASS
 
 - [ ] **Step 6: Committa**
@@ -472,7 +607,7 @@ Test con un `FakeClient` che registra le chiamate e restituisce dati fissi, e un
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_controller.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_controller.py -v`
 Expected: FAIL con `ImportError: cannot import name 'AppController'`
 
 - [ ] **Step 3: Implementa `AppController` in `kemai_client/controller.py`**
@@ -487,7 +622,7 @@ Ogni `except KimaiError` passa da `log_exception(self.logger, exc, context)` e a
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_controller.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_controller.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -530,7 +665,7 @@ Questi test girano su `tk.Tk()` headless su Windows senza bisogno di schermo; se
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_widgets.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_widgets.py -v`
 Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.ui'`
 
 - [ ] **Step 3: Implementa `kemai_client/ui/widgets.py`**
@@ -543,7 +678,7 @@ Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.ui'`
 
 - [ ] **Step 4: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_widgets.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_widgets.py -v`
 Expected: PASS
 
 - [ ] **Step 5: Committa**
@@ -588,9 +723,9 @@ Registra il controller con `controller.subscribe(self.refresh)` in `__init__`.
 
 `start_ticking` chiama `root.after(1000, self._tick)`; `_tick` aggiorna l'etichetta con `format_duration(controller.elapsed_seconds())` e **si ripianifica da sola** finché l'attività è in corso. Nessun `threading.Thread`: Tkinter sta nel main thread e `after` è sufficiente.
 
-- [ ] **Step 4: Avvia l'app e verifica a mano**
+- [ ] **Step 4: [UMANO] Avvia l'app e verifica a mano**
 
-Run: `python -m kemai_client`
+Run: `.venv\Scripts\python.exe -m kemai_client`
 Expected: la finestra si apre a 282×312 con l'ottagono visibile, i selettori disabilitati, il cronometro a `00:00:00`.
 
 - [ ] **Step 5: Committa**
@@ -631,9 +766,9 @@ Tre `ttk.Entry` per Host, Nome utente, Token; il campo Token con `show="*"`; un 
 
 `Salva` chiama `controller.create_project(name, customer_id)`, mette il risultato in `self.result` e chiude. `Annulla` lascia `self.result = None` e chiude. Un nome vuoto non chiude e mostra `t("err_name_empty")`.
 
-- [ ] **Step 4: Verifica a mano**
+- [ ] **Step 4: [UMANO] Verifica a mano**
 
-Run: `python -m kemai_client`, poi `File → Impostazioni`.
+Run: `.venv\Scripts\python.exe -m kemai_client`, poi `File → Impostazioni`.
 Expected: si apre una finestra con i tre campi, `Prova` con credenziali finte mostra errore in rosso **senza chiudere la finestra**, `Annulla` non salva nulla.
 
 - [ ] **Step 5: Committa**
@@ -677,7 +812,7 @@ Il task con la logica di threading più delicata e l'unico con una condizione di
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
-Run: `python -m pytest tests/test_tray.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_tray.py -v`
 Expected: FAIL con `ModuleNotFoundError: No module named 'kemai_client.tray'`
 
 - [ ] **Step 3: Implementa `kemai_client/tray.py`**
@@ -700,12 +835,12 @@ In `app.py`, il protocollo `WM_DELETE_WINDOW` chiama `close_behaviour(config.clo
 
 - [ ] **Step 6: Esegui i test e verifica che passino**
 
-Run: `python -m pytest tests/test_tray.py -v`
+Run: `.venv\Scripts\python.exe -m pytest tests/test_tray.py -v`
 Expected: PASS
 
-- [ ] **Step 7: Verifica a mano l'uscita pulita**
+- [ ] **Step 7: [UMANO] Verifica a mano l'uscita pulita**
 
-Run: `python -m kemai_client`
+Run: `.venv\Scripts\python.exe -m kemai_client`
 Poi: avvia un'attività, chiudi la finestra con la X, apri il menu del vassoio, scegli **Esci**, e controlla in Task Manager che il processo `python` sia sparito.
 Expected: il processo termina. Se resta, `daemon=True` o `tray.stop()` non sono stati applicati.
 
@@ -758,16 +893,16 @@ Le ultime quattro righe sono la rete di sicurezza della spec §11: la config rea
 
 - [ ] **Step 3: Scrivi `README.md`**
 
-In italiano: requisiti, `pip install -r requirements.txt`, `python -m kemai_client`, come generare il token API nel profilo Kimai, il comando del probing del Task 6, e la nota che il server è in rete interna.
+In italiano: requisiti, `pip install -r requirements.txt`, `.venv\Scripts\python.exe -m kemai_client`, come generare il token API nel profilo Kimai, il comando del probing del Task 6, e la nota che il server è in rete interna.
 
 **Il README non contiene alcun token reale.** Solo la procedura per ottenerne uno.
 
 - [ ] **Step 4: Esegui la suite completa**
 
-Run: `python -m pytest -v`
+Run: `.venv\Scripts\python.exe -m pytest -v`
 Expected: PASS su tutti i test, nessuno saltato tranne l'eventuale test dell'ottagono su ambiente senza schermo.
 
-- [ ] **Step 5: Confronta ogni finestra con il suo screenshot**
+- [ ] **Step 5: [UMANO] Confronta ogni finestra con il suo screenshot**
 
 Con l'app in esecuzione, confronta a occhio contro `img-ref/`:
 
