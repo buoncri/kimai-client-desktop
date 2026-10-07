@@ -55,3 +55,11 @@ class TestFilterParamNames:
 
     def test_params_are_distinct(self):
         assert endpoints.PARAM_CUSTOMER != endpoints.PARAM_PROJECT
+
+
+class TestPagingParams:
+    def test_default_page_size_is_a_positive_int(self):
+        # Un valore a zero o negativo produrrebbe una richiesta priva di
+        # elementi e un elenco sempre vuoto, senza alcun errore visibile.
+        assert isinstance(endpoints.DEFAULT_PAGE_SIZE, int)
+        assert endpoints.DEFAULT_PAGE_SIZE > 0

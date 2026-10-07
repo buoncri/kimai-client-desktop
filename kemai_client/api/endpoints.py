@@ -38,3 +38,10 @@ TIMESHEET_STOP = f"{BASE_PATH}/timesheets/stop"
 
 PARAM_CUSTOMER = "customer"
 PARAM_PROJECT = "project"
+
+# --- Parametri di paging --------------------------------------------------
+# Valori ipotetici per Kimai 1.x. Il probing del Task 5 li confermerà o correggerà.
+
+PARAM_PAGE = "page"
+PARAM_SIZE = "size"
+DEFAULT_PAGE_SIZE = 200

@@ -116,13 +116,17 @@ class TestUrls:
         client, transport = make_client(FakeResponse(json_data=[]))
         client.list_projects(7)
         assert transport.last["url"] == f"{TEST_HOST}/api/projects"
-        assert transport.last["params"] == {endpoints.PARAM_CUSTOMER: 7}
+        params = transport.last["params"]
+        assert params[endpoints.PARAM_CUSTOMER] == 7
+        assert params[endpoints.PARAM_SIZE] == endpoints.DEFAULT_PAGE_SIZE
 
     def test_activities_filtered(self):
         client, transport = make_client(FakeResponse(json_data=[]))
         client.list_activities(9)
         assert transport.last["url"] == f"{TEST_HOST}/api/activities"
-        assert transport.last["params"] == {endpoints.PARAM_PROJECT: 9}
+        params = transport.last["params"]
+        assert params[endpoints.PARAM_PROJECT] == 9
+        assert params[endpoints.PARAM_SIZE] == endpoints.DEFAULT_PAGE_SIZE
 
     def test_start_hits_the_start_path(self):
         client, transport = make_client(FakeResponse(json_data={"id": 1}))
@@ -295,3 +299,48 @@ class TestTimeout:
         client = KimaiClient(TEST_HOST, TEST_USER, TEST_TOKEN, transport=transport, timeout=3.5)
         client.list_customers()
         assert transport.last["timeout"] == 3.5
+
+
+class TestPaging:
+    """Tolleranza alle pagine: PARAM_SIZE esplicito e flag di troncatura."""
+
+    def test_lists_request_explicit_page_size(self):
+        # Ogni list_* passa esplicitamente size=DEFAULT_PAGE_SIZE,
+        # non si affida al default del server.
+        client, transport = make_client(FakeResponse(json_data=[]))
+        client.list_customers()
+        assert transport.last["params"][endpoints.PARAM_SIZE] == endpoints.DEFAULT_PAGE_SIZE
+
+    def test_exact_page_size_flags_truncation(self):
+        # Una risposta con esattamente DEFAULT_PAGE_SIZE elementi
+        # deve lasciare last_list_truncated a True.
+        payload = [
+            {"id": i, "name": f"Cliente_{i}"}
+            for i in range(endpoints.DEFAULT_PAGE_SIZE)
+        ]
+        client, _ = make_client(FakeResponse(json_data=payload))
+        client.list_customers()
+        assert client.last_list_truncated is True
+
+    def test_short_page_is_not_truncation(self):
+        # Meno di DEFAULT_PAGE_SIZE elementi significa "tutto presente": False.
+        payload = [
+            {"id": i, "name": f"Cliente_{i}"}
+            for i in range(endpoints.DEFAULT_PAGE_SIZE - 5)
+        ]
+        client, _ = make_client(FakeResponse(json_data=payload))
+        client.list_customers()
+        assert client.last_list_truncated is False
+
+    def test_truncation_flag_resets_between_calls(self):
+        # Un elenco troncato seguito da uno completo azzera il flag.
+        client, _ = make_client(
+            [
+                FakeResponse(json_data=[{"id": i, "name": f"C{i}"} for i in range(endpoints.DEFAULT_PAGE_SIZE)]),
+                FakeResponse(json_data=[{"id": 1, "name": "Solo"}]),
+            ]
+        )
+        client.list_customers()
+        assert client.last_list_truncated is True
+        client.list_customers()
+        assert client.last_list_truncated is False

@@ -111,6 +111,10 @@ class KimaiClient:
         # Il trasporto di default viene creato in pigizia: costruire un client
         # per i test non deve aprire connessioni.
         self._transport = transport
+        # Euristica di §8.3: se un elenco contiene esattamente DEFAULT_PAGE_SIZE
+        # elementi, il server potrebbe averne altri. Il flag descrive solo
+        # l'ultima chiamata, non la sessione.
+        self.last_list_truncated: bool = False
 
     # --- Richiesta --------------------------------------------------------
 
@@ -229,9 +233,15 @@ class KimaiClient:
         return self.get_version()
 
     def list_customers(self) -> list[Customer]:
-        payload = self._request("GET", endpoints.CUSTOMERS)
+        payload = self._request(
+            "GET",
+            endpoints.CUSTOMERS,
+            params={endpoints.PARAM_SIZE: endpoints.DEFAULT_PAGE_SIZE},
+        )
+        items = _as_list(payload)
+        self.last_list_truncated = len(items) >= endpoints.DEFAULT_PAGE_SIZE
         customers = []
-        for item in _as_list(payload):
+        for item in items:
             identifier = _get_id(item)
             if identifier is None:
                 continue
@@ -240,10 +250,17 @@ class KimaiClient:
 
     def list_projects(self, customer_id: int) -> list[Project]:
         payload = self._request(
-            "GET", endpoints.PROJECTS, params={endpoints.PARAM_CUSTOMER: customer_id}
+            "GET",
+            endpoints.PROJECTS,
+            params={
+                endpoints.PARAM_CUSTOMER: customer_id,
+                endpoints.PARAM_SIZE: endpoints.DEFAULT_PAGE_SIZE,
+            },
         )
+        items = _as_list(payload)
+        self.last_list_truncated = len(items) >= endpoints.DEFAULT_PAGE_SIZE
         projects = []
-        for item in _as_list(payload):
+        for item in items:
             identifier = _get_id(item)
             if identifier is None:
                 continue
@@ -252,10 +269,17 @@ class KimaiClient:
 
     def list_activities(self, project_id: int) -> list[Activity]:
         payload = self._request(
-            "GET", endpoints.ACTIVITIES, params={endpoints.PARAM_PROJECT: project_id}
+            "GET",
+            endpoints.ACTIVITIES,
+            params={
+                endpoints.PARAM_PROJECT: project_id,
+                endpoints.PARAM_SIZE: endpoints.DEFAULT_PAGE_SIZE,
+            },
         )
+        items = _as_list(payload)
+        self.last_list_truncated = len(items) >= endpoints.DEFAULT_PAGE_SIZE
         activities = []
-        for item in _as_list(payload):
+        for item in items:
             identifier = _get_id(item)
             if identifier is None:
                 continue
