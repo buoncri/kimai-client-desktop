@@ -29,11 +29,12 @@ class TestDefaultLogPath:
 
 
 class TestLogException:
-    def test_log_exception_returns_short_message(self):
+    def test_log_exception_returns_short_message(self, tmp_path):
         # Il valore restituito e' il messaggio breve italiano,
         # non la stringa con lo stack trace.
         exc = KimaiAuthError("Autenticazione fallita per il server")
-        logger = setup_logging(Path("non_esiste.log"))
+        log_path = tmp_path / "kimai.log"
+        logger = setup_logging(log_path)
         result = log_exception(logger, exc, "start_timesheet")
         assert result == "Autenticazione fallita per il server"
 
