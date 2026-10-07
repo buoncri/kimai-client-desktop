@@ -1,5 +1,8 @@
-# Tkinter è incluso con Python standard
-# Nessun package extra necessario per Tkinter
-# Se usi librerie aggiuntive, aggiungile qui:
-# tkinter
-# tk
+# Dipendenze runtime: solo queste tre librerie esterne.
+# Tkinter fa parte dello standard library di Python.
+requests>=2.31
+pystray>=0.19
+Pillow>=10.0
+
+# Dipendenze di sviluppo (test):
+pytest>=8.0
