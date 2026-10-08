@@ -8,6 +8,7 @@ Il token qui e' una costante fittizia dichiarata nel piano come unico valore
 ammesso: nessun token reale deve mai entrare in questo file.
 """
 
+import datetime
 import warnings
 
 import pytest
@@ -130,15 +131,18 @@ class TestUrls:
         assert params[endpoints.PARAM_PROJECT] == 9
         assert params[endpoints.PARAM_SIZE] == endpoints.DEFAULT_PAGE_SIZE
 
-    def test_start_hits_the_start_path(self):
+    def test_start_hits_the_timesheets_collection(self):
+        # Verificato live (2026-10-08): la creazione e' sulla collezione,
+        # non su un endpoint dedicato /start (che risponde 405).
         client, transport = make_client(FakeResponse(json_data={"id": 1}))
         client.start_timesheet(9, 3)
-        assert transport.last["url"] == f"{TEST_HOST}{endpoints.TIMESHEET_START}"
+        assert transport.last["url"] == f"{TEST_HOST}{endpoints.TIMESHEETS}"
 
-    def test_stop_hits_the_stop_path(self):
+    def test_stop_hits_the_timesheet_item(self):
+        # Verificato live (2026-10-08): l'aggiornamento e' PATCH sull'item.
         client, transport = make_client(FakeResponse(json_data={}))
         client.stop_timesheet(42)
-        assert transport.last["url"] == f"{TEST_HOST}{endpoints.TIMESHEET_STOP}"
+        assert transport.last["url"] == f"{TEST_HOST}{endpoints.TIMESHEETS}/42"
 
 
 # --- Parsing ---------------------------------------------------------------
@@ -439,3 +443,37 @@ class TestVerifyTls:
             if issubclass(w.category, urllib3.exceptions.InsecureRequestWarning)
         ]
         assert len(emitted) == 1
+
+
+# --- Start/stop: il ciclo verificato LIVE sul server (2026-10-08) ---
+
+class TestTimesheetStartStopVerificati:
+    """Contratto confermato contro il server reale:
+    POST /api/timesheets con begin (i dedicati /start|stop rispondono 405),
+    PATCH /api/timesheets/{id} con end (Allow: GET, PATCH, DELETE).
+    """
+
+    def test_start_posts_collection_with_begin(self):
+        client, transport = make_client(
+            FakeResponse(200, json_data={"id": 156284, "duration": 0})
+        )
+        tid = client.start_timesheet(
+            301, 69, begin=datetime.datetime(2026, 10, 8, 12, 40, 23)
+        )
+        assert tid == 156284
+        assert transport.last["method"] == "POST"
+        assert transport.last["url"] == f"{TEST_HOST}{endpoints.TIMESHEETS}"
+        assert transport.last["json"] == {
+            "project": 301,
+            "activity": 69,
+            "begin": "2026-10-08 12:40:23",
+        }
+
+    def test_stop_patches_item_with_end(self):
+        client, transport = make_client(
+            FakeResponse(200, json_data={"id": 5, "duration": 900})
+        )
+        client.stop_timesheet(5, end=datetime.datetime(2026, 10, 8, 12, 45, 0))
+        assert transport.last["method"] == "PATCH"
+        assert transport.last["url"] == f"{TEST_HOST}/api/timesheets/5"
+        assert transport.last["json"] == {"end": "2026-10-08 12:45:00"}

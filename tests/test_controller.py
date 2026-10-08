@@ -5,6 +5,7 @@ per test deterministici. Il controller e' il cuore logico: tutto
 passa da qui, mai dalle finestre.
 """
 
+import datetime
 import time
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -68,8 +69,13 @@ class FakeClient:
             ]
         return []
 
-    def start_timesheet(self, project_id, activity_id):
-        self.record("start_timesheet", project_id=project_id, activity_id=activity_id)
+    def start_timesheet(self, project_id, activity_id, begin=None):
+        self.record(
+            "start_timesheet",
+            project_id=project_id,
+            activity_id=activity_id,
+            begin=begin,
+        )
         return 42
 
     def stop_timesheet(self, timesheet_id):
@@ -384,3 +390,28 @@ class TestClientLifecycle:
         ctrl.apply_config()
         assert ctrl._client is not old
         assert ctrl._client.verify_tls is False
+
+
+# --- Start/stop: orologio da parete verso l'API (verificato live) ---
+
+class TestStartWallClock:
+    def test_start_passes_wall_datetime_and_label_uses_it(self):
+        # Il begin inviato all'API e' l'orologio da parete (datetime),
+        # non il monotonic del cronometro; e la label "Avviato il" usa
+        # lo stesso riferimento, altrimenti mostrebbe date del 1970.
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        before = datetime.datetime.now()
+        ctrl.start()
+        method, kwargs = client.calls[-1]
+        assert method == "start_timesheet"
+        begin = kwargs.get("begin")
+        assert isinstance(begin, datetime.datetime)
+        assert before <= begin <= datetime.datetime.now()
+        today = datetime.date.today().strftime("%d/%m/%Y")
+        assert ctrl.started_at_label().startswith(today)

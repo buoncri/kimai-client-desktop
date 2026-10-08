@@ -11,6 +11,7 @@ e' solo il caso di default.
 
 from __future__ import annotations
 
+import datetime
 from typing import Any, Protocol
 from urllib.parse import urljoin
 
@@ -311,20 +312,48 @@ class KimaiClient:
             activities.append(Activity(identifier, str(item.get("name", "")), project_id))
         return activities
 
-    def start_timesheet(self, project_id: int, activity_id: int) -> int:
+    def start_timesheet(
+        self, project_id: int, activity_id: int, begin: datetime.datetime | None = None
+    ) -> int:
+        """Avvia un timesheet: POST sulla collezione con il campo begin.
+
+        Verificato live (2026-10-08): gli endpoint dedicati /start non
+        esistono (405); la creazione e' POST /api/timesheets e la risposta
+        contiene l'id del timesheet creato. Formato begin accettato:
+        "Y-m-d H:i:s".
+        """
+        if begin is None:
+            begin = datetime.datetime.now()
         payload = self._request(
             "POST",
-            endpoints.TIMESHEET_START,
-            json={"project": project_id, "activity": activity_id},
+            endpoints.TIMESHEETS,
+            json={
+                "project": project_id,
+                "activity": activity_id,
+                "begin": begin.strftime("%Y-%m-%d %H:%M:%S"),
+            },
         )
         if isinstance(payload, dict):
             identifier = _get_id(payload)
             if identifier is not None:
                 return identifier
-        raise KimaiError("Il server non ha restituito l'identificativo dell'attivita'.")
+        raise KimaiError("Il server non ha restituito l'identificativo del timesheet.")
 
-    def stop_timesheet(self, timesheet_id: int) -> None:
-        self._request("POST", endpoints.TIMESHEET_STOP, json={"id": timesheet_id})
+    def stop_timesheet(
+        self, timesheet_id: int, end: datetime.datetime | None = None
+    ) -> None:
+        """Ferma il timesheet: PATCH sull'elemento con il campo end.
+
+        Verificato live (2026-10-08): l'aggiornamento e' PATCH su
+        /api/timesheets/{id} (Allow: GET, PATCH, DELETE).
+        """
+        if end is None:
+            end = datetime.datetime.now()
+        self._request(
+            "PATCH",
+            f"{endpoints.TIMESHEETS}/{timesheet_id}",
+            json={"end": end.strftime("%Y-%m-%d %H:%M:%S")},
+        )
 
     def create_project(self, name: str, customer_id: int) -> Project:
         payload = self._request(

@@ -24,8 +24,6 @@ class TestPaths:
             "PROJECTS",
             "ACTIVITIES",
             "TIMESHEETS",
-            "TIMESHEET_START",
-            "TIMESHEET_STOP",
         ):
             path = getattr(endpoints, name)
             assert isinstance(path, str), f"{name} non e' una stringa"

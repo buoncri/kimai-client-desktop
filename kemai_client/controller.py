@@ -10,6 +10,7 @@ Non importa Tkinter, non importa pystray.
 
 from __future__ import annotations
 
+import datetime
 import time
 from typing import Callable, List, Optional
 
@@ -62,6 +63,10 @@ class AppController:
         self._activity_id: Optional[int] = None
         self._timesheet_id: Optional[int] = None
         self._started_at: float = 0.0
+        # L'istante di avvio in orologio da parete: e' il begin inviato
+        # all'API e la fonte della label "Avviato il" (il monotonic non
+        # ha un'epoca valida per fromtimestamp).
+        self._started_wall: Optional[datetime.datetime] = None
         self._truncated: bool = False
         self._last_error_msg: str = ""
 
@@ -276,11 +281,13 @@ class AppController:
         if self._timesheet_id:
             raise RuntimeError(t("err_active"))
 
+        begin = datetime.datetime.now()
         try:
             self._timesheet_id = self._client.start_timesheet(
-                self._project_id, self._activity_id
+                self._project_id, self._activity_id, begin=begin
             )
             self._started_at = self._clock()
+            self._started_wall = begin
             self._last_error_msg = ""
             self.notify()
         except KimaiError as exc:
@@ -309,12 +316,9 @@ class AppController:
         return int(self._clock() - self._started_at)
 
     def started_at_label(self) -> str:
-        if not self._started_at:
+        if self._started_wall is None:
             return ""
-        import datetime
-
-        dt = datetime.datetime.fromtimestamp(self._started_at)
-        return dt.strftime("%d/%m/%Y %H:%M")
+        return self._started_wall.strftime("%d/%m/%Y %H:%M")
 
     # --- Progetto ---
 
