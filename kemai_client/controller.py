@@ -48,6 +48,11 @@ class AppController:
         self._config: Config = config or Config()
         self._clock = clock
 
+        # Il client esiste dal primo istante, costruito dalla config:
+        # all'avvio configurato la finestra principale carica i dati
+        # subito, senza passare da connect().
+        self.apply_config()
+
         # Stato della cascata.
         self._customers: List[Customer] = []
         self._projects: List[Project] = []
@@ -121,6 +126,19 @@ class AppController:
                 pass  # Un subscriber che crasha non deve fermare gli altri.
 
     # --- Connessione ---
+
+    def apply_config(self) -> None:
+        """Ricostruisce il client dalla config corrente.
+
+        Chiamato alla costruzione del controller e dopo ogni salvataggio
+        delle impostazioni: il client deve sempre rispecchiare la
+        configurazione attiva, altrimenti si continuerebbe a parlare
+        col server vecchio.
+        """
+        self._client = self._client_factory(
+            self._config.host, self._config.username, self._config.token
+        )
+        self._client.verify_tls = self._config.verify_tls
 
     def connect(
         self,

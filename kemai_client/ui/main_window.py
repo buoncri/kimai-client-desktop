@@ -142,6 +142,13 @@ class MainWindow:
         self.refresh()
         self.start_ticking()
 
+        # --- Primo caricamento dati dal server ---
+        # Differito di un attimo per far comparire subito la finestra: la
+        # risposta del server arriva quando arriva. Solo se il controller
+        # non ha gia' clienti (es. caricati dal salvataggio impostazioni).
+        if not self._controller.customers:
+            self._root.after(50, self._controller.load_customers)
+
     # --- Callback cascata ---
 
     def _on_customer_selected(self, event: tk.Event) -> None:

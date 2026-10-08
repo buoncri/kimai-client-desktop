@@ -172,6 +172,11 @@ class SettingsWindow:
         # Salva su disco (atomico, crea directory se serve).
         save(self._controller.config)
 
+        # Il client deve rispecchiare la nuova configurazione, e i dati
+        # vanno ricaricati dal server (eventualmente diverso).
+        self._controller.apply_config()
+        self._controller.load_customers()
+
         if self._on_saved is not None:
             self._on_saved()
 

@@ -357,3 +357,30 @@ class TestConnectVerifyTls:
         ctrl = AppController(lambda h, u, t: FakeClient(), config=config)
         ctrl.connect("https://host", "u", "t", verify_tls=False)
         assert ctrl._client.verify_tls is False
+
+
+# --- Ciclo di vita del client: dalla config, ricostruito al salvataggio ---
+
+class TestClientLifecycle:
+    def test_client_built_from_config_at_construction(self):
+        # All'avvio configurato il client deve esistere gia': la finestra
+        # principale carica i clienti subito, senza passare da connect().
+        config = Config(
+            host="https://host", username="u", token="t", verify_tls=False
+        )
+        ctrl = AppController(lambda h, u, t: FakeClient(), config=config)
+        assert ctrl._client.verify_tls is False
+
+    def test_apply_config_rebuilds_client_after_save(self):
+        # Dopo aver salvato impostazioni diverse, il client deve rispecchiare
+        # la nuova config: senza rebuild si continuerebbe a parlare col
+        # server vecchio.
+        config = Config(host="https://old", username="u", token="t")
+        ctrl = AppController(lambda h, u, t: FakeClient(), config=config)
+        old = ctrl._client
+        ctrl._config = Config(
+            host="https://new", username="u2", token="t2", verify_tls=False
+        )
+        ctrl.apply_config()
+        assert ctrl._client is not old
+        assert ctrl._client.verify_tls is False
