@@ -63,3 +63,26 @@ class TestPagingParams:
         # elementi e un elenco sempre vuoto, senza alcun errore visibile.
         assert isinstance(endpoints.DEFAULT_PAGE_SIZE, int)
         assert endpoints.DEFAULT_PAGE_SIZE > 0
+
+
+class TestPathsVerificatiSulServerReale:
+    """Percorsi verificati LIVE contro il server vero (2026-10-08).
+
+    Metodo: richieste con credenziali finte e verifica TLS disattivata.
+    Un percorso esistente risponde 401/403 (il firewall API chiede
+    l'autenticazione); uno inesistente risponde 404; uno esistente con
+    metodo diverso risponde 405.
+    """
+
+    def test_versions_is_singular(self):
+        # Il plurale /api/versions risponde 404 sul server reale:
+        # l'endpoint esistente e' singolare.
+        assert endpoints.VERSIONS == "/api/version"
+
+    def test_collection_paths_as_verified(self):
+        # Confermati esistenti (403 con credenziali finte) dal primo
+        # contatto reale del 2026-10-08.
+        assert endpoints.CUSTOMERS == "/api/customers"
+        assert endpoints.PROJECTS == "/api/projects"
+        assert endpoints.ACTIVITIES == "/api/activities"
+        assert endpoints.TIMESHEETS == "/api/timesheets"
