@@ -30,6 +30,7 @@ STRINGS: dict[str, str] = {
     "label_username": "Nome utente",
     "label_token": "Token",
     "chk_close_to_tray": "Chiudi nel vassoio di sistema",
+    "chk_verify_tls": "Ignora la verifica del certificato TLS",
     "btn_test": "Prova",
     "btn_cancel": "Annulla",
     "btn_save": "Salva",

@@ -48,6 +48,7 @@ class Transport(Protocol):
         params: dict | None = None,
         json: dict | None = None,
         timeout: float | None = None,
+        verify: bool | None = None,
     ) -> Response: ...
 
 
@@ -103,6 +104,7 @@ class KimaiClient:
         token: str,
         transport: Transport | None = None,
         timeout: float = DEFAULT_TIMEOUT,
+        verify_tls: bool = True,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.username = username
@@ -111,6 +113,9 @@ class KimaiClient:
         # Il trasporto di default viene creato in pigizia: costruire un client
         # per i test non deve aprire connessioni.
         self._transport = transport
+        # Verifica del certificato TLS. False solo su scelta esplicita
+        # (server interno con certificato non fidato).
+        self.verify_tls = verify_tls
         # Euristica di §8.3: se un elenco contiene esattamente DEFAULT_PAGE_SIZE
         # elementi, il server potrebbe averne altri. Il flag descrive solo
         # l'ultima chiamata, non la sessione.
@@ -144,15 +149,35 @@ class KimaiClient:
         transport = self._transport if self._transport is not None else _default_transport()
         url = f"{self.base_url}{path}"
 
+        kwargs: dict[str, Any] = {
+            "headers": self._headers(),
+            "params": params,
+            "json": json,
+            "timeout": self.timeout,
+        }
+        # Il kwarg `verify` viene passato solo quando la verifica e' disattivata:
+        # nel percorso di default la chiamata resta identica a prima.
+        suppress_tls_warning = False
+        if not self.verify_tls:
+            kwargs["verify"] = False
+            suppress_tls_warning = True
+
         try:
-            response = transport.request(
-                method,
-                url,
-                headers=self._headers(),
-                params=params,
-                json=json,
-                timeout=self.timeout,
-            )
+            if suppress_tls_warning:
+                # Certificato non fidato accettato su scelta esplicita:
+                # l'avviso di urllib3 resta confinato in questo scope,
+                # cosi' stderr non si sporca a ogni chiamata.
+                import warnings
+
+                import urllib3
+
+                with warnings.catch_warnings():
+                    warnings.simplefilter(
+                        "ignore", urllib3.exceptions.InsecureRequestWarning
+                    )
+                    response = transport.request(method, url, **kwargs)
+            else:
+                response = transport.request(method, url, **kwargs)
         except OSError as exc:
             # Timeout, connessione rifiutata, DNS fallito: per l'utente e'
             # un unico fatto, "non riesco a parlare con il server".

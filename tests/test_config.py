@@ -123,3 +123,28 @@ class TestIsConfigured:
             token="tok",
         )
         assert is_configured(cfg)
+
+
+class TestVerifyTls:
+    def test_default_is_verify_enabled(self):
+        # La verifica del certificato e' attiva di default: disattivarla
+        # deve restare una scelta esplicita dell'utente, mai un silenzio.
+        assert Config().verify_tls is True
+
+    def test_roundtrip_persists_verify_tls(self, tmp_path):
+        path = tmp_path / "config.json"
+        cfg = Config(
+            host="https://host",
+            username="u",
+            token="t",
+            verify_tls=False,
+        )
+        save(cfg, path)
+        assert load(path).verify_tls is False
+
+    def test_old_config_without_key_verifies_tls(self, tmp_path):
+        # Un config.json scritto prima dell'opzione non contiene la chiave:
+        # la verifica resta attiva, mai disattivata per omissione.
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "https://host", "username": "u", "token": "t"}))
+        assert load(path).verify_tls is True

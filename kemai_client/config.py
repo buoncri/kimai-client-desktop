@@ -37,6 +37,9 @@ class Config:
     close_to_tray: bool = False
     last_customer_id: int | None = None
     last_project_id: int | None = None
+    # Verifica del certificato TLS del server. True di default: disattivarla
+    # e' la scelta esplicita per un server interno con certificato non fidato.
+    verify_tls: bool = True
 
 
 def default_path() -> Path:

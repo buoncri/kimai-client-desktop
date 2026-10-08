@@ -122,13 +122,23 @@ class AppController:
 
     # --- Connessione ---
 
-    def connect(self, host: str, username: str, token: str) -> str:
+    def connect(
+        self,
+        host: str,
+        username: str,
+        token: str,
+        *,
+        verify_tls: bool | None = None,
+    ) -> str:
         """Crea il client e restituisce la versione.
 
         Args:
             host: URL dell'istanza Kimai.
             username: nome utente API.
             token: token API.
+            verify_tls: verifica del certificato TLS. Se None usa il valore
+                salvato nella config; la finestra impostazioni passa lo
+                stato della casella per provare prima di salvare.
 
         Returns:
             Versione del server (es. "1.15").
@@ -137,6 +147,11 @@ class AppController:
             KimaiAuthError: se le credenziali non sono valide.
         """
         self._client = self._client_factory(host, username, token)
+        # Il factory resta a tre argomenti (contratto esistente): la scelta
+        # TLS si applica sull'istanza, che la legge al momento della chiamata.
+        self._client.verify_tls = (
+            self._config.verify_tls if verify_tls is None else verify_tls
+        )
         version = self._client.get_version()
         return version
 

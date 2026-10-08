@@ -8,6 +8,8 @@ Il token qui e' una costante fittizia dichiarata nel piano come unico valore
 ammesso: nessun token reale deve mai entrare in questo file.
 """
 
+import warnings
+
 import pytest
 
 from kemai_client.api import endpoints
@@ -344,3 +346,96 @@ class TestPaging:
         assert client.last_list_truncated is True
         client.list_customers()
         assert client.last_list_truncated is False
+
+
+# --- Verifica TLS del certificato (opzione per server interno) ---
+
+class RecordingTransport:
+    """Trasporto che accetta qualunque kwarg e registra tutto.
+
+    A differenza di FakeTransport non fissa la firma: serve a verificare
+    che il client aggiunga (o non aggiunga) il kwarg `verify`.
+    """
+
+    def __init__(self, response):
+        self._response = response
+        self.calls = []
+
+    def request(self, method, url, **kwargs):
+        self.calls.append(kwargs)
+        if isinstance(self._response, BaseException):
+            raise self._response
+        return self._response
+
+
+class WarningTransport(RecordingTransport):
+    """Trasporto che emette l'avviso di certificato non fidato, come requests."""
+
+    def request(self, method, url, **kwargs):
+        import urllib3
+
+        warnings.warn("certificato non fidato", urllib3.exceptions.InsecureRequestWarning)
+        return super().request(method, url, **kwargs)
+
+
+class TestVerifyTls:
+    def test_default_does_not_pass_verify_kwarg(self):
+        # Con la verifica attiva il client non aggiunge nessun kwarg:
+        # i trasporti esistenti con firma fissa non devono cambiare.
+        transport = RecordingTransport(
+            FakeResponse(200, json_data={"version": "1.15"})
+        )
+        client = KimaiClient(TEST_HOST, TEST_USER, TEST_TOKEN, transport=transport)
+        client.get_version()
+        assert "verify" not in transport.calls[0]
+
+    def test_verify_disabled_passes_verify_false(self):
+        transport = RecordingTransport(
+            FakeResponse(200, json_data={"version": "1.15"})
+        )
+        client = KimaiClient(
+            TEST_HOST, TEST_USER, TEST_TOKEN, transport=transport, verify_tls=False
+        )
+        client.get_version()
+        assert transport.calls[0]["verify"] is False
+
+    def test_verify_disabled_suppresses_insecure_warning(self):
+        import urllib3
+
+        client = KimaiClient(
+            TEST_HOST,
+            TEST_USER,
+            TEST_TOKEN,
+            transport=WarningTransport(
+                FakeResponse(200, json_data={"version": "1.15"})
+            ),
+            verify_tls=False,
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            client.get_version()
+        emitted = [
+            w for w in caught
+            if issubclass(w.category, urllib3.exceptions.InsecureRequestWarning)
+        ]
+        assert emitted == []
+
+    def test_verify_enabled_keeps_insecure_warning(self):
+        import urllib3
+
+        client = KimaiClient(
+            TEST_HOST,
+            TEST_USER,
+            TEST_TOKEN,
+            transport=WarningTransport(
+                FakeResponse(200, json_data={"version": "1.15"})
+            ),
+        )
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            client.get_version()
+        emitted = [
+            w for w in caught
+            if issubclass(w.category, urllib3.exceptions.InsecureRequestWarning)
+        ]
+        assert len(emitted) == 1

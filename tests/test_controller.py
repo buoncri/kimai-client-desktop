@@ -329,3 +329,31 @@ class TestErrorsGoThroughLog:
         # L'errore e' in last_error (non vuoto, non il token).
         assert ctrl.last_error
         assert len(ctrl.last_error) > 0
+
+
+# --- Verifica TLS: il controller porta la scelta della config al client ---
+
+class TestConnectVerifyTls:
+    def test_connect_applies_config_verify_tls(self):
+        config = Config(
+            host="https://host", username="u", token="t", verify_tls=False
+        )
+        ctrl = AppController(lambda h, u, t: FakeClient(), config=config)
+        ctrl.connect("https://host", "u", "t")
+        assert ctrl._client.verify_tls is False
+
+    def test_connect_default_keeps_verification(self):
+        config = Config(host="https://host", username="u", token="t")
+        ctrl = AppController(lambda h, u, t: FakeClient(), config=config)
+        ctrl.connect("https://host", "u", "t")
+        assert ctrl._client.verify_tls is True
+
+    def test_connect_explicit_choice_overrides_config(self):
+        # La finestra impostazioni passa lo stato della casella: vince sulla
+        # config salvata, perche' "Prova" verifica prima ancora di salvare.
+        config = Config(
+            host="https://host", username="u", token="t", verify_tls=True
+        )
+        ctrl = AppController(lambda h, u, t: FakeClient(), config=config)
+        ctrl.connect("https://host", "u", "t", verify_tls=False)
+        assert ctrl._client.verify_tls is False

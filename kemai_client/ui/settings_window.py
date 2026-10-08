@@ -3,6 +3,8 @@ r"""Finestra Impostazioni.
 Campi: Host, Nome utente, Token (show="*").
 Pulsanti: "Prova" (verifica senza salvare), "Annulla", "Salva".
 L'etichetta di stato diventa verde (connesso) o rossa (errore).
+Casella "Ignora la verifica del certificato TLS": per server interni
+con certificato non fidato; disattivata di default.
 
 Questo modulo non importa mai KimaiClient: interagisce solo con
 l'AppController e le stringhe italiane tramite i18n.t().
@@ -45,7 +47,7 @@ class SettingsWindow:
         self._window.transient(parent)
         self._window.grab_set()
         self._window.resizable(False, False)
-        self._window.geometry("320x280")
+        self._window.geometry("320x306")
 
         # --- Host ---
         self._frame_host = ttk.Frame(self._window, padding=(10, 5))
@@ -89,13 +91,28 @@ class SettingsWindow:
             variable=self._chk_tray,
         ).pack()
 
+        # --- Checkbox: ignora la verifica del certificato TLS ---
+        # Spunta = non verificare il certificato (server interno con
+        # certificato non fidato). La variabile e' "ignora": il valore
+        # in config e' il negato (verify_tls).
+        self._chk_tls_ignore = tk.BooleanVar(
+            value=not controller.config.verify_tls
+        )
+        chk_tls_frame = ttk.Frame(self._window, padding=(10, 5))
+        chk_tls_frame.grid(row=4, column=0, sticky="w")
+        ttk.Checkbutton(
+            chk_tls_frame,
+            text=t("chk_verify_tls"),
+            variable=self._chk_tls_ignore,
+        ).pack()
+
         # --- Etichetta di stato ---
         self._lbl_status = ttk.Label(self._window, text="")
-        self._lbl_status.grid(row=4, column=0, pady=5)
+        self._lbl_status.grid(row=5, column=0, pady=5)
 
         # --- Pulsanti ---
         btn_frame = ttk.Frame(self._window, padding=(10, 5))
-        btn_frame.grid(row=5, column=0, sticky="we")
+        btn_frame.grid(row=6, column=0, sticky="we")
 
         ttk.Button(btn_frame, text=t("btn_test"), command=self._on_test).pack(
             side=tk.LEFT, padx=2
@@ -121,7 +138,12 @@ class SettingsWindow:
         token = self._entry_token.get().strip()
 
         try:
-            version = self._controller.connect(host, username, token)
+            version = self._controller.connect(
+                host,
+                username,
+                token,
+                verify_tls=not self._chk_tls_ignore.get(),
+            )
             self._lbl_status.configure(
                 text=t("status_connected", version=version),
                 foreground="green",
@@ -144,6 +166,7 @@ class SettingsWindow:
             username=username,
             token=token,
             close_to_tray=close_to_tray,
+            verify_tls=not self._chk_tls_ignore.get(),
         )
 
         # Salva su disco (atomico, crea directory se serve).

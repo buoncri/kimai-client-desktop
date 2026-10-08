@@ -41,12 +41,13 @@ Il file di configurazione si trova in:
 Contiene:
 | Campo | Descrizione |
 |---|---|
-| `host` | URL del server Kimai (es. `https://crono.bonificaumbria.local`) |
+| `host` | URL del server Kimai (es. `https://crono.bonificaumbra.local`) |
 | `username` | Nome utente API |
 | `token` | Token API (in chiaro, come deciso da Kimai) |
 | `close_to_tray` | Chiudi nel vassoio di sistema |
 | `last_customer_id` | Ultimo cliente selezionato |
 | `last_project_id` | Ultimo progetto selezionato |
+| `verify_tls` | Verifica del certificato TLS (`true` di default; `false` solo se il server interno usa un certificato non fidato — casella "Ignora la verifica del certificato TLS" nelle Impostazioni) |
 
 Il file **non è tracciato da git** (`.gitignore` lo esclude).
 
