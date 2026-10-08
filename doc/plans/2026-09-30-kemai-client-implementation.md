@@ -413,7 +413,7 @@ git commit -m "feat: dizionario stringhe italiane"
 
 ### Task 5: Script di probing degli endpoint
 
-**Perché esiste:** l'istanza `https://crono.bonificaumbria.local` non risolve dalla macchina di sviluppo, quindi gli endpoint reali di Kimai 1.15 **non sono mai stati verificati**. Questo script gira sulla rete interna e produce il rapporto che conferma o smentisce le ipotesi in `endpoints.py`.
+**Perché esiste:** l'istanza `https://crono.bonificaumbra.local` non risolve dalla macchina di sviluppo, quindi gli endpoint reali di Kimai 1.15 **non sono mai stati verificati** fino al primo contatto riuscito del 2026-10-08 (il falso presupposto nasceva da un refuso nel nome: "bonificaumbria" al posto di "bonificaumbra"). Questo script gira sulla rete interna e produce il rapporto che conferma o smentisce le ipotesi in `endpoints.py`.
 
 **Files:**
 - Create: `tools/probe_api.py`
@@ -465,7 +465,7 @@ git commit -m "feat: script di probing degli endpoint Kimai"
 Run, **da una macchina collegata alla rete interna**, con `luca` come utente e il token API personale:
 
 ```bash
-.venv\Scripts\python.exe tools/probe_api.py https://crono.bonificaumbria.local luca
+.venv\Scripts\python.exe tools/probe_api.py https://crono.bonificaumbra.local luca
 ```
 
 Il prompt chiede il token. **Incolla il nuovo token ruotato, non quello già finito in questa chat.**

@@ -38,7 +38,7 @@ class TestSaveLoadRoundtrip:
     def test_save_load_roundtrip(self, tmp_path):
         path = tmp_path / "config.json"
         cfg = Config(
-            host="https://crono.bonificaumbria.local",
+            host="https://crono.bonificaumbra.local",
             username="luca",
             token="test-token-not-real",
             close_to_tray=True,

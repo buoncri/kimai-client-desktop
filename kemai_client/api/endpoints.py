@@ -1,7 +1,7 @@
 """Endpoint dell'API Kimai.
 
 TUTTO quello che riguarda i percorsi del server vive in questo file, e solo
-qui. Il motivo e' concreto: il server di sviluppo (`crono.bonificaumbria.local`)
+qui. Il motivo e' concreto: il server di sviluppo (`crono.bonificaumbra.local`)
 e' in una rete interna non raggiungibile dalla macchina di sviluppo, quindi
 nessun endpoint e' mai stato verificato. I valori qui sotto sono IPOTESI basate
 sulla linea Kimai 1.x.

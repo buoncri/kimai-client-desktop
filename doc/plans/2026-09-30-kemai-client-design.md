@@ -42,7 +42,7 @@ l'attività e la vede registrata su Kimai.
 
 | Vincolo | Valore |
 |---|---|
-| Server Kimai | `https://crono.bonificaumbria.local` — **rete interna, non risolvibile dalla macchina di sviluppo** |
+| Server Kimai | `https://crono.bonificaumbra.local` — **rete interna** (per mesi il nome fu trascritto con il refuso "bonificaumbria" al posto di "bonificaumbra": era quello il motivo dei fallimenti DNS, non l'irraggiungibilita') |
 | Versione Kimai | 1.15 (linea legacy, diversa dalla 2.x) |
 | Utente API | `luca` (id 1) |
 | Sistema operativo sviluppo | Windows |
@@ -94,7 +94,7 @@ dello stato. Questo confine è il motivo per cui la logica è testabile senza Tk
    └──────────────┘                        │                                 │
                                    notifica│                                 ▼
    ┌──────────────┐  eventi / comandi  ┌───▼──────────┐              https://crono
-   │ Finestre Tk  │ ◄────────────────► │  callback     │              .bonificaumbria
+   │ Finestre Tk  │ ◄────────────────► │  callback     │              .bonificaumbra
    │  (main       │                    │  di notifica  │               .local/api
    │   thread)    │                    └───────────────┘
    └──────────────┘
