@@ -109,19 +109,26 @@ class TrayIcon:
     def start(self) -> None:
         """Avvia l'icona nel vassoio di sistema.
 
-        Usa `icon.setup()` + `icon.run_detached()` su un thread
-        **daemon**. Il `daemon=True` garantisce che un crash del
-        tray non tenga vivo il processo.
+        Esegue `icon.run(setup)` dentro un thread **daemon** nostro:
+        `run()` blocca, ma blocca il thread daemon, non il main thread.
+        `run_detached()` non serve (aprirebbe un thread interno NON
+        daemon: il processo non morirebbe mai). `daemon=True` garantisce
+        che un crash del tray non tenga vivo il processo.
+
+        Nota: pystray non ha un metodo `Icon.setup()`: il setup e' una
+        CALLBACK passata a `run()`, che rende visibile l'icona.
         """
         self._daemon_thread = threading.Thread(
-            target=self._run_detached, daemon=True, name="pystray"
+            target=self._run, daemon=True, name="pystray"
         )
         self._daemon_thread.start()
 
-    def _run_detached(self) -> None:
-        """Esegue setup + run_detached, mai run() (bloccante)."""
-        self._icon.setup()
-        self._icon.run_detached()
+    def _run(self) -> None:
+        """Esegue run() con la callback di setup nel thread daemon."""
+        def _setup(icon: pystray.Icon) -> None:
+            icon.visible = True
+
+        self._icon.run(_setup)
 
     def stop(self) -> None:
         """Ferma l'icona del vassoio."""

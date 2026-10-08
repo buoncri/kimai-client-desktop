@@ -66,6 +66,11 @@ def setup_logging(path: Union[Path, str, None] = None) -> logging.Logger:
     ):
         return logger
 
+    # Il primo avvio: la directory padre (es. %APPDATA%\KimaiClient) non
+    # esiste ancora, e RotatingFileHandler crea il FILE ma non le CARTELLE.
+    # Senza questo, l'app crasha prima ancora di aprire la finestra.
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     handler = RotatingFileHandler(
         str(path),
         maxBytes=512 * 1024,  # 512 KB

@@ -138,3 +138,19 @@ class TestRotatingFile:
         assert rotated.exists(), (
             "Nessun file rotato: il RotatingFileHandler non funziona?"
         )
+
+
+class TestPrimoAvvio:
+    """Il caso del primo avvio: la directory padre non esiste ancora.
+
+    E' il bug che ha bloccato l'app al lancio: RotatingFileHandler crea
+    il file ma non le cartelle. Il piano non conteneva questo test, quindi
+    nessun agente poteva vederlo: aggiunto dopo il primo crash reale.
+    """
+
+    def test_setup_logging_creates_missing_parent_directory(self, tmp_path):
+        log = tmp_path / "KimaiClient" / "kimai.log"
+        assert not log.parent.exists()
+        setup_logging(log)
+        assert log.parent.exists()
+        assert log.parent.is_dir()

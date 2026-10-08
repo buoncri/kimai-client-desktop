@@ -13,6 +13,7 @@ from pathlib import Path
 
 from kemai_client.config import Config, load, is_configured
 from kemai_client.controller import AppController
+from kemai_client.i18n import t
 from kemai_client.logging_setup import setup_logging
 from kemai_client.tray import TrayIcon
 from kemai_client.ui.main_window import MainWindow
@@ -39,38 +40,49 @@ def main() -> None:
     import tkinter as tk
 
     root = tk.Tk()
+    # Il titolo va impostato SEMPRE, non solo nel ramo configurato:
+    # al primo avvio la root nasce con il titolo di default 'tk'.
+    root.title(t("app_title"))
+
+    # Le callback condivise dai due percorsi di avvio, definite PRIMA
+    # del ramo condizionale: nel flusso precedente on_open_settings
+    # viveva solo nel ramo else, e _show_main_window del primo avvio
+    # la chiamava generando un NameError inghiottito da Tkinter.
+    def on_open_settings() -> None:
+        SettingsWindow(root, controller)
+
+    def on_new_project() -> None:
+        from kemai_client.ui.project_dialog import ProjectDialog
+
+        preselected = controller.customer_id
+        ProjectDialog(root, controller, preselected_customer=preselected)
+
+    def _start_main_window() -> None:
+        # Costruisce la finestra principale. Chiamata subito se configurati,
+        # oppure dopo il salvataggio delle impostazioni al primo avvio.
+        MainWindow(root, controller, on_open_settings, on_new_project)
 
     # Se la configurazione non è completa, apre Impostazioni.
     if not is_configured(config):
-        opened_settings = False
+        saved = {"ok": False}
 
         def on_saved() -> None:
-            nonlocal opened_settings
-            opened_settings = True
+            saved["ok"] = True
 
         settings = SettingsWindow(root, controller, on_saved=on_saved)
         root.after(200, settings._entry_host.focus_set)
 
-        # Dopo che l'utente salva, mostra la finestra principale.
-        def _show_main_window() -> None:
-            if opened_settings:
-                on_open_settings()
+        # Dopo il salvataggio, apre la finestra principale: ora la
+        # configurazione esiste e il controller puo' parlare col server.
+        def _open_main_when_saved() -> None:
+            if saved["ok"]:
+                _start_main_window()
+            else:
+                root.after(300, _open_main_when_saved)
 
-        root.after(500, _show_main_window)
+        root.after(500, _open_main_when_saved)
     else:
-        # Finestra principale.
-        def on_open_settings() -> None:
-            SettingsWindow(root, controller)
-
-        def on_new_project() -> None:
-            from kemai_client.ui.project_dialog import ProjectDialog
-
-            preselected = controller.customer_id
-            dialog = ProjectDialog(
-                root, controller, preselected_customer=preselected
-            )
-
-        MainWindow(root, controller, on_open_settings, on_new_project)
+        _start_main_window()
 
     # Tray vassoio.
     tray = TrayIcon(controller, root)
