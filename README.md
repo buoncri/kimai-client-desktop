@@ -1,6 +1,25 @@
-# Kimai Desktop Client
+# Kimai Desktop Client (fork)
 
 Client desktop in Python/Tkinter per l'API del server **Kimai** (time tracking).
+
+## Origine
+
+Questo progetto è nato come **fork / alternativa** al client ufficiale [KEMAI](https://www.kimai.org/en/store/alexandreptj-kemai-desktop-client.html) di Alexandre Petitjean (AlexandrePTJ), disponibile sul marketplace di Kimai.
+
+Le schermate nella cartella `img-ref/` sono screenshot del client KEMAI ufficiale — **non sono opera nostra**. L'autore delle schermate è Alexandre Petitjean; l'origine delle immagini è https://www.kimai.org/en/store/alexandreptj-kemai-desktop-client.html.
+
+I file `.webp` sono gli originali scaricati dal sito di Kimai. I `.png` sono conversioni lossless prodotte con ffmpeg per poterli ispezionare più comodamente; i pixel sono identici.
+
+Questo repository **non contiene asset grafici dell'applicazione**: il nostro client genera la propria icona a runtime con Pillow, senza file binari.
+
+**License:** nessuno (progetto personale per l'organizzazione).
+
+## Nota
+
+Questo codice è il **risultato di un test**: ho fatto girare un modello IA locale
+su un PC non molto performante per verificare se una macchina modesta è in
+grado di generare codice funzionante per un'app GUI desktop. Il risultato
+tanto è qui.
 
 ## Installazione
 
@@ -13,7 +32,7 @@ Client desktop in Python/Tkinter per l'API del server **Kimai** (time tracking).
 
 ```bash
 # Crea un ambiente virtuale
-"C:\Users\luca\AppData\Local\Programs\Python\Python312\python.exe" -m venv .venv
+python -m venv .venv
 
 # Attiva e installa le dipendenze
 .venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -28,7 +47,7 @@ Le dipendenze runtime sono **tre**: `requests`, `pystray` (Pillow come dipendenz
 ```
 
 Al primo avvio appare la finestra **Impostazioni**: inserisci host, nome utente e token API.
-Il pulsante "Salva" persiste la configurazione in `%APPDATA%\KimaiClient\config.json` (atomico).
+Il pulsante "Salva" persiste la configurazione in `%APPDATA%\KimaiClient\config.json` (scrittura atomica).
 
 ## Configurazione
 
@@ -53,8 +72,7 @@ Il file **non è tracciato da git** (`.gitignore` lo esclude).
 
 ## Token API
 
-Il token è un dato sensibile: **non è mai stato inserito manualmente** nei file del
-repository e non compare in nessuna documentazione. Per generarlo:
+Il token è un dato sensibile: **non è mai stato inserito manualmente** nei file del repository e non compare in nessuna documentazione. Per generarlo:
 
 1. Accedi al pannello Web di Kimai con le tue credenziali.
 2. Vai su **Impostazioni utente** → **Token API** (o "Access tokens").
@@ -62,8 +80,8 @@ repository e non compare in nessuna documentazione. Per generarlo:
 4. **Copia subito il token** (non sarà più visibile dopo la chiusura del dialog).
 5. Incollalo nella finestra *Impostazioni* del client desktop.
 
-> ⚠️ Il token è memorizzato in chiaro su disco (scelta deliberata: su Windows
-> DPAPI richiederebbe un pacchetto aggiuntivo). Il file è sotto `%APPDATA%`, che
+> ⚠️ Il token è memorizzato in chiaro su disco (scelta deliberata: su Windows DPAPI
+> richiederebbe un pacchetto aggiuntivo). Il file è sotto `%APPDATA%`, che
 > è già per utente, e non viene tracciato da git.
 
 ## Interfaccia
@@ -78,6 +96,21 @@ La finestra principale (282×312 px) contiene:
 
 Il pulsante nel **vassoio di sistema** (pystray) mostra: *Mostra*, *Avvia/Ferma*, *Esci*.
 
+## Strumenti
+
+### `tools/probe_api.py` — Probing degli endpoint Kimai
+
+Script per verificare le varianti di autenticazione (X-AUTH-USER vs Basic) e
+i formati di output su un'istanza Kimai reale. Gira su una macchina connessa
+alla rete interna.
+
+```bash
+.venv\Scripts\python.exe tools/probe_api.py https://<host> <username>
+# poi incolla il token quando richiesto.
+```
+
+Non richiede token nel sorgente: li chiede in input da `getpass`.
+
 ## Note tecniche
 
 - Tutte le finestre passano da `AppController`: **non chiamano mai l'API Kimai direttamente**.
@@ -91,4 +124,6 @@ Il pulsante nel **vassoio di sistema** (pystray) mostra: *Mostra*, *Avvia/Ferma*
 
 ## Licenza
 
-Nessuna: progetto personale per l'organizzazione.
+Fatene ciò che volete. **Nessuna garanzia di nessun tipo.** Non sono
+responsabile di danni, dati persi o cose che succedono mentre il cronometro
+è attivo e l'applicazione si blocca all'improvviso.

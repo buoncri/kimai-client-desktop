@@ -1,13 +1,34 @@
+# Build artifacts
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.pyo
+
+# Test / CI
 .pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.tox/
+
+# Virtual environments
 .venv/
 venv/
 
-# Rete di sicurezza per le credenziali: la config reale sta in %APPDATA%
-# e non dovrebbe mai arrivare qui, ma se qualcuno la copia in questa
-# cartella non deve finire in un commit.
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config e credenziali
 config.json
 *.local.json
 .env
+*.pem
