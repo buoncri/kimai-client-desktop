@@ -1,6 +1,6 @@
 # Kimai Desktop Client (fork)
 
-Client desktop in Python/Tkinter per l'API del server **Kimai** (time tracking).
+Client desktop in Python/Tkinter per l'API del server **Kimai** (time tracking - testato su server ver. 1.15 [antico]).
 
 ## Origine
 
@@ -12,7 +12,7 @@ I file `.webp` sono gli originali scaricati dal sito di Kimai. I `.png` sono con
 
 Questo repository **non contiene asset grafici dell'applicazione**: il nostro client genera la propria icona a runtime con Pillow, senza file binari.
 
-**License:** nessuno (progetto personale per l'organizzazione).
+**License:** (Leggi in fondo).
 
 ## Nota
 
