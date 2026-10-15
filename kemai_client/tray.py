@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import math
 import threading
+from kemai_client.geometry import octagon_points
 from typing import Callable
 
 import pystray
@@ -82,13 +83,7 @@ def build_icon() -> Image.Image:
     cx, cy = ICON_SIZE / 2, ICON_SIZE / 2
     r = ICON_SIZE * 0.35
 
-    points: list[float] = []
-    for i in range(8):
-        angle_deg = 22.5 + i * 45
-        angle_rad = angle_deg * math.pi / 180.0
-        x = cx + r * math.cos(angle_rad)
-        y = cy - r * math.sin(angle_rad)
-        points.extend((x, y))
+    points = octagon_points(cx, cy, r)
 
     draw.polygon(points, fill="#ffffff")
 

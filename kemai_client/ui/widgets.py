@@ -10,6 +10,8 @@ test hardcoded qui.
 import math
 from typing import Callable
 
+from kemai_client.geometry import octagon_points
+
 import tkinter as tk
 
 
@@ -48,15 +50,7 @@ def draw_octagon(canvas: tk.Canvas, cx: float, cy: float, r: float) -> str:
     Returns:
         L'ID dell'oggetto creato sul Canvas.
     """
-    points: list[float] = []
-    for i in range(8):
-        angle_deg = 22.5 + i * 45  # gradi orari
-        angle_rad = angle_deg * math.pi / 180.0
-        # Tkinter ha y verso il basso; il segno - rende il senso
-        # orario coerente con un orologio analogico.
-        x = cx + r * math.cos(angle_rad)
-        y = cy - r * math.sin(angle_rad)
-        points.extend((x, y))
+    points = octagon_points(cx, cy, r)
 
     return canvas.create_polygon(
         points, fill="#4a90d9", outline="#2c5f9e", width=2
