@@ -20,13 +20,19 @@ from __future__ import annotations
 import getpass
 import sys
 from collections import namedtuple
+from pathlib import Path
 from typing import List
 
 import urllib.request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin
 
-from kemai_client.api import endpoints
+# Eseguito come script, Python mette `tools/` nel sys.path e non la root
+# del repository: senza questa riga `import kemai_client` fallisce con
+# ModuleNotFoundError, e il comando del README non funziona.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from kemai_client.api import endpoints  # noqa: E402
 
 
 # --- Tipi dati ----------------------------------------------------------

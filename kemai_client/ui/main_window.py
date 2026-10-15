@@ -69,6 +69,10 @@ class MainWindow:
         menu_edit.add_command(label=t("menu_quit"), command=self._on_quit)
         menu_bar.add_cascade(label=t("menu_edit"), menu=menu_edit)
 
+        # Conservata sull'istanza: i test devono poter invocare le voci
+        # di menu per verificare che chiamino l'uscita unificata.
+        self._menu_bar = menu_bar
+
         # --- Container ---
         self._container = ttk.Frame(self._root, padding=8)
         self._container.pack(fill=tk.BOTH, expand=False)

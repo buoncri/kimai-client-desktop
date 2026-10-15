@@ -94,25 +94,89 @@ class TestTrayIconStructure:
 class TestTrayToggleLabel:
     """Verifica che il menu del vassoio dica Ferma quando un'attivita' e' in corso."""
 
-    def test_tray_toggle_item_is_clickable_while_running(self):
-        """Con controller.is_running() True, il menu ha una voce attiva."""
+    def _menu(self, is_running):
         from kemai_client.tray import build_menu
 
         ctrl = Mock()
-        ctrl.is_running.return_value = True
+        ctrl.is_running.return_value = is_running
         ctrl.toggle = Mock()
-        mock_root = Mock()
-        menu = build_menu(ctrl, mock_root, Mock())
+        return ctrl, build_menu(ctrl, Mock(), Mock())
 
-        # Il secondo elemento del menu (indice 1) e' la voce Avvia/Ferma.
-        # pystray usa MenuItem: se enabled non e' False, il menu e' cliccabile.
-        second_item = menu.items[1]
-        # Il text e' una callable (lambda), non una stringa fissa.
-        # La verifica principale: enabled non deve essere False.
-        enabled = second_item.enabled
-        assert enabled is not False, (
-            "La voce Avvia/Ferma deve essere cliccabile mentre e' in corso"
+    def test_toggle_label_follows_state_while_running(self):
+        """Il testo e' ricalcolato a ogni accesso: dice 'Ferma'.
+
+        pystray conserva la callable in ``_text`` e la rivaluta nella
+        property ``text``: per questo l'etichetta segue lo stato invece
+        di essere fissata all'avvio. Testare solo ``toggle_label`` non
+        basta, serve verificare che ``build_menu`` la usi davvero.
+        """
+        from kemai_client.i18n import t
+
+        _, menu = self._menu(is_running=True)
+
+        assert menu.items[1].text == t("btn_stop")
+
+    def test_toggle_label_follows_state_when_idle(self):
+        from kemai_client.i18n import t
+
+        _, menu = self._menu(is_running=False)
+
+        assert menu.items[1].text == t("btn_start")
+
+    def test_toggle_label_changes_with_state(self):
+        """Stesso menu, stato che cambia: l'etichetta deve cambiare."""
+        from kemai_client.tray import build_menu
+
+        state = {"running": False}
+        ctrl = Mock()
+        ctrl.is_running.side_effect = lambda: state["running"]
+        item = build_menu(ctrl, Mock(), Mock()).items[1]
+
+        before = item.text
+        state["running"] = True
+
+        assert before != item.text, (
+            "l'etichetta del vassoio resta ferma dopo l'avvio"
         )
+
+
+class TestMenuItemsInvokeCallbacks:
+    """Le voci del menu devono passare da root.after, mai chiamare direttamente.
+
+    E' il contratto che rende sicuro toccare i widget: la callback
+    arriva sul thread di pystray e deve tornare sul main thread.
+    """
+
+    def _menu(self):
+        from kemai_client.tray import build_menu
+
+        root = Mock()
+        # after esegue subito: simula il main thread che smazza la callback.
+        root.after = Mock(side_effect=lambda delay, fn: fn())
+        ctrl = Mock()
+        ctrl.is_running.return_value = False
+        on_quit = Mock()
+        return ctrl, on_quit, build_menu(ctrl, root, on_quit)
+
+    def test_toggle_item_calls_controller_toggle(self):
+        ctrl, _, menu = self._menu()
+
+        menu.items[1](menu.items[1])
+
+        ctrl.toggle.assert_called_once()
+
+    def test_quit_item_calls_on_quit(self):
+        """La voce Esci deve passare da on_quit, non da root.quit.
+
+        Chiamare root.quit() direttamente e' il difetto della issue #1:
+        chiude il main loop ma non ferma il timesheet e non termina il
+        processo, che resta vivo nel vassoio.
+        """
+        _, on_quit, menu = self._menu()
+
+        menu.items[2](menu.items[2])
+
+        on_quit.assert_called_once()
 
 
 class TestToggleLabel:

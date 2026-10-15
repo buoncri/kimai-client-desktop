@@ -460,3 +460,53 @@ class TestToggleThreeWays:
         method_names = [c[0] for c in client.calls]
         assert "stop_timesheet" in method_names
         assert ctrl.is_running() is False
+
+
+class TestStopWhileCascadeChanges:
+    """Cambiare la cascata mentre si lavora non deve spostare il timesheet.
+
+    `select_customer` azzera progetto e attivita', ma l'attivita' gia'
+    in corso resta quella vecchia: Ferma deve chiudere quella, non
+    quella appena selezionata nella tendina.
+    """
+
+    def _running(self):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.start()
+        return client, ctrl
+
+    def test_stopping_uses_the_original_timesheet_id(self):
+        client, ctrl = self._running()
+        assert ctrl.is_running() is True
+
+        # L'utente cambia cliente mentre l'attivita' gira.
+        ctrl.select_customer(2)
+        assert ctrl.is_running() is True, "selezionare un cliente non ferma nulla"
+
+        ctrl.toggle()
+
+        stops = [c for c in client.calls if c[0] == "stop_timesheet"]
+        assert len(stops) == 1
+        # FakeClient.start_timesheet restituisce sempre 42: quello e' il
+        # timesheet da chiudere, non uno derivato dalla nuova selezione.
+        assert stops[0][1]["timesheet_id"] == 42
+        assert ctrl.is_running() is False
+
+    def test_button_stays_stoppable_after_cascade_change(self):
+        """Dopo il cambio il pulsante deve restare abilitato a Ferma."""
+        client, ctrl = self._running()
+
+        ctrl.select_project(11)  # azzera activity_id
+        assert ctrl.can_start() is False
+        # can_start() falso + is_running() vero: il pulsante resta cliccabile
+        # perche' la UI usa l'OR dei due (vedasi TestRefreshState).
+        assert ctrl.is_running() is True
+
+        ctrl.toggle()
+        assert ctrl.is_running() is False

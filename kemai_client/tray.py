@@ -24,6 +24,7 @@ from typing import Callable
 import pystray
 from PIL import Image, ImageDraw
 
+from kemai_client.exit_handler import exit_sequence
 from kemai_client.i18n import t
 
 # Dimensione icona del vassoio (quadrato).
@@ -124,7 +125,6 @@ class TrayIcon:
 
     def _quit_app(self) -> None:
         """Esci: ferma timesheet, tray e distruge la finestra."""
-        from kemai_client.exit_handler import exit_sequence
         exit_sequence(self._controller, self._root, self)
 
     def start(self) -> None:

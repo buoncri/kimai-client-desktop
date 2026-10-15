@@ -10,7 +10,7 @@ Tutti i test girano offline: `root`, `tray` e `controller` sono Mock,
 nessuna finestra Tkinter viene creata.
 """
 
-from unittest.mock import Mock, call
+from unittest.mock import Mock
 
 from kemai_client.app import make_close_handler
 

@@ -111,6 +111,29 @@ alla rete interna.
 
 Non richiede token nel sorgente: li chiede in input da `getpass`.
 
+### `tools/verify_fix.py` — Verifica del ciclo avvia/ferma
+
+Serve a stabilire **dove** è il problema quando "il pulsante Ferma non
+funziona": nella finestra o nel server. Fa un giro completo di avvio e
+arresto di un timesheet reale e rilegge il record dal server per
+controllare che l'ora di fine sia stata registrata.
+
+```bash
+.venv\Scripts\python.exe tools\verify_fix.py
+.venv\Scripts\python.exe tools\verify_fix.py --customer 7
+```
+
+Usa la configurazione già salvata in `%APPDATA%\KimaiClient\config.json`,
+quindi va eseguito **dopo** aver aperto le Impostazioni e premuto "Prova".
+Il token non viene stampato.
+
+- Se finisce con `TUTTO OK`, il server accetta e chiude i record: il
+  problema è nell'interfaccia.
+- Se fallisce la lettura di `end`, il problema non è nell'interfaccia.
+
+Attenzione: lo script crea un record reale per qualche secondo. Non è una
+simulazione.
+
 ## Note tecniche
 
 - Tutte le finestre passano da `AppController`: **non chiamano mai l'API Kimai direttamente**.
@@ -121,6 +144,11 @@ Non richiede token nel sorgente: li chiede in input da `getpass`.
   (messaggio breve a schermo, dettaglio tecnico solo nel file).
 - Tutte le operazioni Tkinter girano nel **main thread**; pystray usa un **thread daemon**
   (`run_detached()`).
+- Ogni uscita dell'app (File → Esci, Modifica → Esci, menu del vassoio, X della finestra)
+  passa da un unico `exit_sequence` in `kemai_client/exit_handler.py`: ferma il timesheet,
+  chiude il vassoio e distrugge la finestra, in quest'ordine.
+- I test usano **una sola root Tkinter per sessione** (`tests/conftest.py`): crearne e
+  distruggerne diverse in sequenza fa fallire `tk.Tk()` in modo intermittente su Windows.
 
 ## Licenza
 
