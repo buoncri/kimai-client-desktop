@@ -228,7 +228,8 @@ class AppController:
         try:
             self._projects = self._client.list_projects(customer_id)
             self._truncated = self._client.last_list_truncated
-        except KimaiError:
+        except KimaiError as exc:
+            log_exception(self._logger, exc, "select_customer")
             pass
 
         self._last_error_msg = ""
@@ -249,7 +250,8 @@ class AppController:
         try:
             self._activities = self._client.list_activities(project_id)
             self._truncated = self._client.last_list_truncated
-        except KimaiError:
+        except KimaiError as exc:
+            log_exception(self._logger, exc, "select_project")
             pass
 
         if not self._activities:
@@ -309,7 +311,7 @@ class AppController:
             # Rete caduta: il timer continua a girare, e cosi' deve
             # restare l'attivita'. Azzerare qui mostrerebbe 00:00:00 per
             # un lavoro che sul server e' ancora aperto.
-            self._last_error_msg = "Rete non disponibile"
+            self._last_error_msg = t("err_network")
             # Non chiamiamo log_exception qui per il test di network loss.
             self.notify()
 

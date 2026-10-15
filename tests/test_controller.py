@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from kemai_client.api.errors import KimaiAuthError, KimaiNetworkError
+from kemai_client.api.errors import KimaiAuthError, KimaiError, KimaiNetworkError
 from kemai_client.config import Config, is_configured
 from kemai_client.controller import AppController
 from kemai_client.i18n import t
@@ -601,3 +601,26 @@ class TestStopWhileCascadeChanges:
 
         ctrl.toggle()
         assert ctrl.is_running() is False
+
+
+class TestErrorLogging:
+    def test_select_customer_logs_on_error(self, caplog):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        client.list_projects = MagicMock(side_effect=KimaiError("boom"))
+        ctrl.select_customer(1)
+        records = [r for r in caplog.records if "select_customer" in r.message]
+        assert len(records) >= 1
+
+    def test_select_project_logs_on_error(self, caplog):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        client.list_activities = MagicMock(side_effect=KimaiError("boom"))
+        ctrl.select_project(10)
+        records = [r for r in caplog.records if "select_project" in r.message]
+        assert len(records) >= 1
