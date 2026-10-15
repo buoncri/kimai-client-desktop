@@ -29,6 +29,10 @@ class SettingsWindow:
         parent: il widget genitore (Tk o Toplevel).
         controller: istanza di AppController.
         on_saved: callable invocato dopo un salvataggio riuscito.
+        on_closed: callable invocato alla chiusura, con True se la
+            configurazione e' stata salvata e False se la finestra e'
+            stata chiusa senza salvare. Senza questo chi apre la finestra
+            non ha modo di sapere quando l'utente ha finito.
     """
 
     def __init__(
@@ -36,10 +40,13 @@ class SettingsWindow:
         parent: tk.Misc,
         controller,  # AppController
         on_saved: Callable[[], None] | None = None,
+        on_closed: Callable[[bool], None] | None = None,
     ) -> None:
         self._parent = parent
         self._controller = controller
         self._on_saved = on_saved
+        self._on_closed = on_closed
+        self._closed = False
 
         # --- Finestra ---
         self._window = tk.Toplevel(parent)
@@ -48,6 +55,9 @@ class SettingsWindow:
         self._window.grab_set()
         self._window.resizable(False, False)
         self._window.geometry("320x306")
+        # La X passa da cancel: senza questo la finestra sparirebbe senza
+        # notificare nessuno, e chi l'ha aperta resterebbe in attesa.
+        self._window.protocol("WM_DELETE_WINDOW", self.cancel)
 
         # --- Host ---
         self._frame_host = ttk.Frame(self._window, padding=(10, 5))
@@ -180,11 +190,24 @@ class SettingsWindow:
         if self._on_saved is not None:
             self._on_saved()
 
-        self.cancel()
+        self.cancel(saved=True)
 
-    def cancel(self) -> None:
-        """Chiude la finestra senza salvare."""
+    def cancel(self, saved: bool = False) -> None:
+        """Chiude la finestra e notifica la chiusura.
+
+        Args:
+            saved: True se la configurazione e' stata appena salvata.
+                Chi non chiama `cancel` non viene notificato, quindi
+                al primo avvio non si saprebbe mai quando riprovare.
+        """
+        if self._closed:
+            return
+        self._closed = True
+
         self._window.destroy()
+
+        if self._on_closed is not None:
+            self._on_closed(saved)
 
     # Esporta per il test strutturale.
     def test_connection(self) -> None:

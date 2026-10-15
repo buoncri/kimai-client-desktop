@@ -12,7 +12,27 @@ nessuna finestra Tkinter viene creata.
 
 from unittest.mock import Mock
 
-from kemai_client.app import make_close_handler
+from kemai_client.app import bootstrap_after_settings, make_close_handler
+
+
+class TestBootstrapAfterSettings:
+    """Cosa fare quando le impostazioni del primo avvio vengono chiuse.
+
+    Senza configurazione l'app non puo' parlare col server. Il vecchio
+    comportamento riciclava un `root.after(300, ...)` finche' l'utente non
+    salvava: chiudendo la finestra con X o "Annulla" il ciclo non
+    terminava mai e restava un processo vivo senza finestra, cosa che
+    all'utente arriva come "l'app si avvia ma non compare niente".
+    """
+
+    def test_opens_when_settings_were_saved(self):
+        assert bootstrap_after_settings(True) == "open"
+
+    def test_quits_when_settings_were_cancelled(self):
+        assert bootstrap_after_settings(False) == "quit"
+
+    def test_the_answer_depends_only_on_saving(self):
+        assert bootstrap_after_settings(True) != bootstrap_after_settings(False)
 
 
 class TestMakeCloseHandlerWithdraw:

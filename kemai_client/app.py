@@ -21,6 +21,27 @@ from kemai_client.ui.main_window import MainWindow
 from kemai_client.ui.settings_window import SettingsWindow
 
 
+def bootstrap_after_settings(saved: bool) -> str:
+    """Decide cosa fare alla chiusura delle impostazioni del primo avvio.
+
+    Al primo avvio, se la configurazione non e' completa, l'app non puo'
+    parlare col server: o si salva e si prosegue, o si esce.
+
+    Non esiste un terzo stato "aspetta": il vecchio codice riciclava un
+    ``root.after(300, ...)`` finche' l'utente non salvava, e chiudendo la
+    finestra con X o "Annulla" il ciclo non terminava mai. Restava un
+    processo vivo, senza finestra e senza tray, cioe' un'applicazione che
+    "si avvia" e non mostra niente.
+
+    Args:
+        saved: True se l'utente ha salvato la configurazione.
+
+    Returns:
+        "open" per aprire la finestra principale, "quit" per uscire.
+    """
+    return "open" if saved else "quit"
+
+
 def make_close_handler(controller, root, tray, close_to_tray: bool):
     """Costruisce il gestore di WM_DELETE_WINDOW (la X della finestra).
 
@@ -96,24 +117,20 @@ def main() -> None:
         MainWindow(root, controller, on_open_settings, on_new_project, on_quit)
 
     # Se la configurazione non è completa, apre Impostazioni.
+    # La finestra notifica la chiusura con `on_closed`: non si sondeggia
+    # con un `after` riciclato, che non terminerebbe se l'utente chiude
+    # senza salvare.
     if not is_configured(config):
-        saved = {"ok": False}
-
-        def on_saved() -> None:
-            saved["ok"] = True
-
-        settings = SettingsWindow(root, controller, on_saved=on_saved)
-        root.after(200, settings._entry_host.focus_set)
-
-        # Dopo il salvataggio, apre la finestra principale: ora la
-        # configurazione esiste e il controller puo' parlare col server.
-        def _open_main_when_saved() -> None:
-            if saved["ok"]:
+        def on_settings_closed(saved: bool) -> None:
+            if bootstrap_after_settings(saved) == "open":
                 _start_main_window()
             else:
-                root.after(300, _open_main_when_saved)
+                exit_sequence(controller, root, tray)
 
-        root.after(500, _open_main_when_saved)
+        settings = SettingsWindow(
+            root, controller, on_saved=lambda: None, on_closed=on_settings_closed
+        )
+        root.after(200, settings._entry_host.focus_set)
     else:
         _start_main_window()
 
