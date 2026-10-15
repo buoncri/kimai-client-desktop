@@ -216,6 +216,97 @@ class TestStartStop:
         assert not ctrl.is_running()
 
 
+class TestStopResetsTheClock:
+    """Ferma deve azzerare il cronometro (RF-05 della specifica).
+
+    "Ferma" registra la fine attivita' su Kimai e azzera il cronometro.
+    Senza l'azzeramento il contatore continua a crescere perche' la base
+    di calcolo resta impostata: la finestra mostra un tempo che sale
+    anche quando non e' piu' in corso nessuna attivita'.
+    """
+
+    def _running(self, stop_fails=False):
+        client = FakeClient()
+        if stop_fails:
+            def failing_stop(*args, **kwargs):
+                client.record("stop_timesheet")
+                raise KimaiNetworkError("Rete caduta")
+
+            client.stop_timesheet = failing_stop
+
+        # Clock che avanza di 10s a ogni lettura: rende visibile se il
+        # contatore riparte da capo o continua da dove era.
+        state = [100]
+
+        def fake_clock():
+            state[0] += 10
+            return float(state[0])
+
+        ctrl = AppController(lambda h, u, t: client, clock=fake_clock)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.start()
+        return ctrl
+
+    def test_stop_zeroes_the_elapsed_counter(self):
+        ctrl = self._running()
+        assert ctrl.elapsed_seconds() > 0, "il timer deve girare durante"
+
+        ctrl.stop()
+
+        assert ctrl.elapsed_seconds() == 0, (
+            f"dopo Ferma il cronometro segna ancora "
+            f"{ctrl.elapsed_seconds()} secondi"
+        )
+
+    def test_stop_clears_the_started_at_label(self):
+        ctrl = self._running()
+        assert ctrl.started_at_label() != "", "il campo deve riempirsi avviando"
+
+        ctrl.stop()
+
+        assert ctrl.started_at_label() == "", (
+            f"il campo 'Avviato il' e' rimasto a {ctrl.started_at_label()!r}"
+        )
+
+    def test_the_counter_stays_at_zero_afterwards(self):
+        """Non basta azzerare una volta: deve restare a zero."""
+        ctrl = self._running()
+        ctrl.stop()
+
+        assert ctrl.elapsed_seconds() == 0
+        assert ctrl.elapsed_seconds() == 0
+
+    def test_a_new_start_restarts_from_zero(self):
+        ctrl = self._running()
+        ctrl.stop()
+
+        ctrl.start()
+
+        assert ctrl.elapsed_seconds() >= 0
+        # Dopo il riavvio il conteggio riparte dall'inizio della nuova
+        # attivita', non da dove si era fermata la precedente.
+        assert ctrl.elapsed_seconds() < 60
+
+    def test_network_loss_keeps_the_clock_running(self):
+        """Con la rete caduta il cronometro NON si azzera (RF-06, riga 277).
+
+        Se il fermamento non e' andato a buon fine l'attivita' e' ancora
+        aperta sul server: azzerare il contatore mostrerebbe 00:00:00 per
+        un lavoro che in realta' continua.
+        """
+        ctrl = self._running(stop_fails=True)
+        ctrl.stop()
+
+        assert ctrl.is_running() is True
+        assert ctrl.elapsed_seconds() > 0, (
+            "il cronometro si e' azzerato nonostante il fermamento fallito"
+        )
+
+
 class TestNetworkLoss:
     def test_network_loss_keeps_timer_running(self):
         # Se stop_timesheet solleva KimaiNetworkError, il timer

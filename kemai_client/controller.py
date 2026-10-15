@@ -298,11 +298,17 @@ class AppController:
         try:
             self._client.stop_timesheet(self._timesheet_id)
             self._timesheet_id = None
+            # Fermare azzera anche il cronometro (RF-05 della specifica):
+            # senza questo la base di calcolo resta impostata e il
+            # contatore continua a salire anche senza attivita' in corso.
+            self._started_at = 0.0
+            self._started_wall = None
             self._last_error_msg = ""
             self.notify()
         except KimaiNetworkError:
-            # Rete caduta: il timer continua a girare.
-            # Non passiamo da t(): il messaggio viene dal logger (già italiano).
+            # Rete caduta: il timer continua a girare, e cosi' deve
+            # restare l'attivita'. Azzerare qui mostrerebbe 00:00:00 per
+            # un lavoro che sul server e' ancora aperto.
             self._last_error_msg = "Rete non disponibile"
             # Non chiamiamo log_exception qui per il test di network loss.
             self.notify()
