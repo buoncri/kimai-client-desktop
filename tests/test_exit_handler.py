@@ -101,6 +101,20 @@ class TestExitSequenceSurvivesErrors:
             "l'errore di stop deve finire nel log, non essere scartato"
         )
 
+    def test_exit_sequence_survives_unexpected_error_on_stop(self, caplog):
+        """Errore non-Kimai da stop(): non propaga, esce e registra nel log."""
+        controller, root, tray, called = _record_order()
+        controller.stop = Mock(side_effect=RuntimeError("stop imprevisto"))
+
+        with caplog.at_level(logging.WARNING, logger=LOGGER):
+            exit_sequence(controller, root, tray)
+
+        assert "quit" in called
+        assert "destroy" in called
+        assert any("stop_timesheet" in r.message for r in caplog.records), (
+            "l'errore di stop deve finire nel log, non essere scartato"
+        )
+
     def test_exit_sequence_survives_tray_failure(self, caplog):
         """Tray.stop solleva: si esce lo stesso, ma il log registra."""
         controller, root, tray, called = _record_order()
