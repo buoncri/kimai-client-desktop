@@ -114,3 +114,16 @@ class TestTrayToggleLabel:
             "La voce Avvia/Ferma deve essere cliccabile mentre e' in corso"
         )
 
+
+class TestToggleLabel:
+    """toggle_label e' una funzione pura: restituisce la stringa corretta."""
+
+    def test_toggle_label_is_start_when_idle(self):
+        from kemai_client.tray import toggle_label
+        from kemai_client.i18n import t
+        assert toggle_label(False) == t("btn_start")
+
+    def test_toggle_label_is_stop_when_running(self):
+        from kemai_client.tray import toggle_label
+        from kemai_client.i18n import t
+        assert toggle_label(True) == t("btn_stop")

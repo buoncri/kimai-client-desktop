@@ -28,6 +28,24 @@ from kemai_client.i18n import t
 
 # Dimensione icona del vassoio (quadrato).
 ICON_SIZE = 64
+def toggle_label(is_running: bool) -> str:
+    """Etichetta dinamica per la voce Avvia/Ferma del vassoio.
+
+    Funzione pura: la correttezza della sua uscita e' coerente con
+    lo stato del controller.
+
+    Args:
+        is_running: True se un'attivita' e' in corso.
+
+    Returns:
+        "Ferma" se in corso, "Avvia" altrimenti.
+    """
+    from kemai_client.i18n import t
+
+    if is_running:
+        return t("btn_stop")
+    return t("btn_start")
+
 
 
 def close_behaviour(close_to_tray: bool) -> str:
@@ -174,6 +192,6 @@ def build_menu(controller, root: tk.Tk, on_quit) -> pystray.Menu:
 
     return pystray.Menu(
         pystray.MenuItem(t("tray_show"), show_window, default=True),
-        pystray.MenuItem(t("btn_start"), toggle_activity),
+        pystray.MenuItem(lambda item: toggle_label(controller.is_running()), toggle_activity),
         pystray.MenuItem(t("tray_quit"), quit_app),
     )
