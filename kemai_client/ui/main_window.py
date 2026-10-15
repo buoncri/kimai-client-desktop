@@ -22,6 +22,13 @@ _WIDTH = 282
 _HEIGHT = 312
 _START_TICK_DELAY_MS = 1000
 
+def _select_by_id(combo, items, wanted_id) -> None:
+    """Seleziona in combo l'indice dell'item con id == wanted_id."""
+    for i, item in enumerate(items):
+        if item.id == wanted_id:
+            combo.current(i)
+            break
+
 
 class MainWindow:
     """Finestra principale del client.
@@ -201,23 +208,11 @@ class MainWindow:
         ]
 
         # Mantieni la selezione attuale se ancora valida.
-        if self._controller.customer_id is not None:
-            for i, c in enumerate(self._controller.customers):
-                if c.id == self._controller.customer_id:
-                    self._combo_customer.current(i)
-                    break
+        _select_by_id(self._combo_customer, self._controller.customers, self._controller.customer_id)
 
-        if self._controller.project_id is not None:
-            for i, p in enumerate(self._controller.projects):
-                if p.id == self._controller.project_id:
-                    self._combo_project.current(i)
-                    break
+        _select_by_id(self._combo_project, self._controller.projects, self._controller.project_id)
 
-        if self._controller.activity_id is not None:
-            for i, a in enumerate(self._controller.activities):
-                if a.id == self._controller.activity_id:
-                    self._combo_activity.current(i)
-                    break
+        _select_by_id(self._combo_activity, self._controller.activities, self._controller.activity_id)
 
         # Se un elenco era troncato, mostra l'avviso.
         if self._controller.truncated:

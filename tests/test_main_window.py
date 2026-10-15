@@ -187,3 +187,12 @@ class TestQuitMenuEntries:
             "entrambe le voci devono passare da on_quit"
         )
         spy.assert_not_called()
+
+class TestSelectById:
+    def test_select_by_id_selects_matching_index(self):
+        from kemai_client.ui.main_window import _select_by_id
+        from unittest.mock import Mock
+        combo = Mock()  # ha .current()
+        items = [Mock(id=1), Mock(id=2)]
+        _select_by_id(combo, items, 2)
+        combo.current.assert_called_once_with(1)
