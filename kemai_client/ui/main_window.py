@@ -226,7 +226,11 @@ class MainWindow:
         self._stop_button.set_label(
             t("btn_start") if not self._controller.is_running() else t("btn_stop")
         )
-        self._stop_button.set_enabled(self._controller.can_start())
+        # can_start() dice se si puo' avviare, is_running() se si puo' fermare:
+        # il bottone serve a entrambi, quindi e' abilitato quando una delle due e' vera.
+        self._stop_button.set_enabled(
+            self._controller.can_start() or self._controller.is_running()
+        )
         self._entry_started.delete(0, tk.END)
         self._entry_started.insert(0, self._controller.started_at_label())
 
