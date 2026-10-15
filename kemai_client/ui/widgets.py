@@ -103,8 +103,14 @@ class StopButton(tk.Canvas):
             fill="#ffffff",
         )
 
-        # Gestione click: bind solo sull'ottagono.
-        self.tag_bind(self._octagon_id, "<Button-1>", self._on_press)
+        # Gestione click: binding sul CANVAS, non sull'ottagono.
+        # Su Tk un item del canvas afferra il clic solo se e' il piu' in
+        # alto: l'etichetta, disegnata dopo, coprirebbe l'ottagono e non
+        # ha alcun binding, lasciando morto il centro del pulsante, cioe'
+        # il posto dove l'utente preme. Legando il widget intero il
+        # pulsante resta cliccabile ovunque, e non si rompe di nuovo se un
+        # giorno si aggiunge un'altra etichetta.
+        self.bind("<Button-1>", self._on_press)
 
     def _on_press(self, event: tk.Event) -> None:
         self._on_click()

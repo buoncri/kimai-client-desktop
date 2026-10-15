@@ -14,6 +14,7 @@ Due livelli,per scelta:
 La verifica visiva (layout, colori, posizione) resta **[UMANO]**.
 """
 
+import pytest
 from unittest.mock import Mock
 
 from kemai_client.i18n import t
@@ -119,7 +120,25 @@ class TestQuitMenuEntries:
 
         on_quit = Mock()
         win = MainWindow(root, ctrl, Mock(), Mock(), on_quit)
+        self._built.append(win)
         return win, on_quit
+
+    @pytest.fixture(autouse=True)
+    def _cleanup_windows(self):
+        """Distrugge le finestre costruite.
+
+        La root e' condivisa da tutta la sessione: i widget di una
+        MainWindow sopravviverebbero ai test successivi, e il ciclo
+        `after(1000, _tick)` che essa avvia continuerebbe a girare per
+        sempre su widget distrutti, spegnendo i test che vengono dopo.
+        """
+        self._built = []
+        yield
+        for win in self._built:
+            try:
+                win._container.destroy()
+            except Exception:
+                pass
 
     def _submenu(self, win, label):
         """Sottomenu con l'etichetta data, cercato per nome.
