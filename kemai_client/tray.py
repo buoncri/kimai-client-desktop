@@ -97,7 +97,7 @@ class TrayIcon:
     ) -> None:
         self._controller = controller
         self._root = root
-        self._menu = build_menu(controller, root)
+        self._menu = build_menu(controller, root, self._quit_app)
         self._icon = pystray.Icon(
             "kemai",
             build_icon(),
@@ -105,6 +105,11 @@ class TrayIcon:
             title=t("app_title"),
         )
         self._daemon_thread: threading.Thread | None = None
+
+    def _quit_app(self) -> None:
+        """Esci: ferma timesheet, tray e distruge la finestra."""
+        from kemai_client.exit_handler import exit_sequence
+        exit_sequence(self._controller, self._root, self)
 
     def start(self) -> None:
         """Avvia l'icona nel vassoio di sistema.
@@ -139,7 +144,7 @@ class TrayIcon:
         return self._daemon_thread is not None and self._daemon_thread.is_alive()
 
 
-def build_menu(controller, root: tk.Tk) -> pystray.Menu:
+def build_menu(controller, root: tk.Tk, on_quit) -> pystray.Menu:
     """Costruisce il menu del vassoio.
 
     Ogni callback passa da `root.after(0, fn)`: arriva sul thread
@@ -148,6 +153,7 @@ def build_menu(controller, root: tk.Tk) -> pystray.Menu:
     Args:
         controller: istanza di AppController.
         root: finestra Tkinter root.
+        on_quit: callable invocato per uscire (ferma timesheet e tray).
 
     Returns:
         Un `pystray.Menu` con voci "Mostra", "Avvia/Ferma", "Esci".
@@ -164,7 +170,7 @@ def build_menu(controller, root: tk.Tk) -> pystray.Menu:
 
     def quit_app():
         """Esci dal vassoio e termina il processo."""
-        root.after(0, root.quit)
+        root.after(0, on_quit)
 
     return pystray.Menu(
         pystray.MenuItem(t("tray_show"), show_window, default=True),

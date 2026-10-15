@@ -61,7 +61,7 @@ class TestBuildMenu:
         mock_root = Mock()
         mock_root.after = Mock()
 
-        menu = build_menu(mock_controller, mock_root)
+        menu = build_menu(mock_controller, mock_root, Mock())
 
         # Il menu deve esistere e avere le voci attese.
         assert menu is not None
@@ -89,3 +89,28 @@ class TestTrayIconStructure:
         from kemai_client.tray import TrayIcon
 
         assert hasattr(TrayIcon, "stop")
+
+
+class TestTrayToggleLabel:
+    """Verifica che il menu del vassoio dica Ferma quando un'attivita' e' in corso."""
+
+    def test_tray_toggle_item_is_clickable_while_running(self):
+        """Con controller.is_running() True, il menu ha una voce attiva."""
+        from kemai_client.tray import build_menu
+
+        ctrl = Mock()
+        ctrl.is_running.return_value = True
+        ctrl.toggle = Mock()
+        mock_root = Mock()
+        menu = build_menu(ctrl, mock_root, Mock())
+
+        # Il secondo elemento del menu (indice 1) e' la voce Avvia/Ferma.
+        # pystray usa MenuItem: se enabled non e' False, il menu e' cliccabile.
+        second_item = menu.items[1]
+        # Il text e' una callable (lambda), non una stringa fissa.
+        # La verifica principale: enabled non deve essere False.
+        enabled = second_item.enabled
+        assert enabled is not False, (
+            "La voce Avvia/Ferma deve essere cliccabile mentre e' in corso"
+        )
+

@@ -39,11 +39,13 @@ class MainWindow:
         controller,  # AppController
         on_open_settings: Callable[[], None],
         on_new_project: Callable[[], None],
+        on_quit: Callable[[], None],
     ) -> None:
         self._root = root
         self._controller = controller
         self._on_open_settings = on_open_settings
         self._on_new_project = on_new_project
+        self._on_quit = on_quit
 
         # --- Finestra ---
         self._root.title(t("app_title"))
@@ -59,12 +61,12 @@ class MainWindow:
         menu_file.add_command(label=t("menu_new_project"), command=self._on_new_project)
         menu_file.add_command(label=t("menu_settings"), command=self._on_open_settings)
         menu_file.add_separator()
-        menu_file.add_command(label=t("menu_quit"), command=self._root.quit)
+        menu_file.add_command(label=t("menu_quit"), command=self._on_quit)
         menu_bar.add_cascade(label=t("menu_file"), menu=menu_file)
 
         # Modifica
         menu_edit = tk.Menu(menu_bar, tearoff=0)
-        menu_edit.add_command(label=t("menu_quit"), command=self._root.quit)
+        menu_edit.add_command(label=t("menu_quit"), command=self._on_quit)
         menu_bar.add_cascade(label=t("menu_edit"), menu=menu_edit)
 
         # --- Container ---

@@ -60,7 +60,12 @@ def main() -> None:
     def _start_main_window() -> None:
         # Costruisce la finestra principale. Chiamata subito se configurati,
         # oppure dopo il salvataggio delle impostazioni al primo avvio.
-        MainWindow(root, controller, on_open_settings, on_new_project)
+        MainWindow(root, controller, on_open_settings, on_new_project, on_quit)
+
+
+    def on_quit() -> None:
+        from kemai_client.exit_handler import exit_sequence
+        exit_sequence(controller, root, tray)
 
     # Se la configurazione non è completa, apre Impostazioni.
     if not is_configured(config):
@@ -90,17 +95,13 @@ def main() -> None:
 
     # WM_DELETE_WINDOW: decide tra nascondi (vassoio) o esci (destroy).
     def on_close() -> None:
-        import traceback
         from kemai_client.tray import close_behaviour
 
         behavior = close_behaviour(config.close_to_tray)
         if behavior == "withdraw":
             root.withdraw()
         else:
-            # Destroy richiede root.quit() + tray.stop(),
-            # altrimenti il thread pystray mantiene vivo il processo.
-            tray.stop()
-            root.quit()
+            exit_sequence(controller, root, tray)
 
     root.protocol("WM_DELETE_WINDOW", on_close)
 
