@@ -115,16 +115,21 @@ class StopButton(tk.Canvas):
         self.itemconfig(self._text_id, text=text)
 
     def set_enabled(self, enabled: bool) -> None:
-        """Abilita o disabilita il pulsante.
+        """Abilita o disabilita l'aspetto del pulsante.
 
-        La disabilitazione colora l'ottagono di grigio e lo rende
-        inattivo.
+        Cambia solo i colori: non tocca lo stato del Canvas, perché
+        disabilitare un Canvas in Tkinter blocca la consegna di **tutti**
+        gli eventi (inclusi quelli legati con tag_bind). Il pulsante
+        resta sempre cliccabile anche quando è disabilitato.
+
+        Args:
+            enabled: True per l'aspetto normale, False per quello spento.
         """
         if enabled:
             self.itemconfig(self._octagon_id, fill="#4a90d9", outline="#2c5f9e")
             self.itemconfig(self._text_id, fill="#ffffff")
-            self.config(state="normal", bg="#f0f0f0")
+            self.config(bg="#f0f0f0")
         else:
             self.itemconfig(self._octagon_id, fill="#b0b0b0", outline="#888888")
             self.itemconfig(self._text_id, fill="#cccccc")
-            self.config(state="disabled", bg="#e0e0e0")
+            self.config(bg="#e0e0e0")

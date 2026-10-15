@@ -109,3 +109,47 @@ class TestOctagon:
         assert len(coords) == 16, f"Solo {len(coords) // 2} vertici, non 8"
         canvas.destroy()
         root.destroy()
+
+
+class TestStopButtonEnabled:
+    """Verifica che set_enabled non disabiliti il Canvas intero."""
+
+    def _build(self):
+        import tkinter as tk
+        from unittest.mock import Mock
+        root = tk.Tk()
+        root.withdraw()
+        btn = StopButton(root, on_click=Mock())
+        return root, btn
+
+    def test_set_enabled_false_keeps_canvas_normal(self):
+        root, btn = self._build()
+        btn.set_enabled(False)
+        assert str(btn.cget("state")) == "normal", (
+            f"stato={btn.cget('state')}: il Canvas disabilitato blocca gli eventi"
+        )
+        btn.destroy()
+        root.destroy()
+
+    def test_set_enabled_false_repaints_grey(self):
+        root, btn = self._build()
+        btn.set_enabled(False)
+        item_id = btn._octagon_id
+        fill = btn.itemcget(item_id, "fill")
+        assert fill == "#b0b0b0", f"fill={fill} (atteso #b0b0b0)"
+        btn.destroy()
+        root.destroy()
+
+    def test_set_enabled_true_restores_fill(self):
+        import tkinter as tk
+        from unittest.mock import Mock
+        root = tk.Tk()
+        root.withdraw()
+        btn = StopButton(root, on_click=Mock())
+        btn.set_enabled(False)
+        btn.set_enabled(True)
+        item_id = btn._octagon_id
+        fill = btn.itemcget(item_id, "fill")
+        assert fill == "#4a90d9", f"fill={fill} (atteso #4a90d9)"
+        btn.destroy()
+        root.destroy()
