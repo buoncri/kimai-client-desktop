@@ -49,7 +49,10 @@ def exit_sequence(controller: Any, root: Any, tray: Any) -> None:
     # (2) Ferma il vassoio: non interrompere la sequenza.
     try:
         tray.stop()
-    except Exception:
-        pass  # Il vassoio potrebbe gi'a essere morto.
+    except Exception as exc:
+        # Il vassoio puo' gia' essere morto: si esce comunque, ma
+        # l'errore va nel log. Swalloware in silenzio nasconderebbe
+        # l'unico sintomo se il thread daemon restasse vivo.
+        log_exception(logger, exc, "tray_stop")
     root.quit()
     root.destroy()

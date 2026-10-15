@@ -32,3 +32,6 @@ config.json
 *.local.json
 .env
 *.pem
+
+# Strumenti agenti locali (config e cache, mai da tracciare)
+.pi/

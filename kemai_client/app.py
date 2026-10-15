@@ -13,11 +13,41 @@ from pathlib import Path
 
 from kemai_client.config import Config, load, is_configured
 from kemai_client.controller import AppController
+from kemai_client.exit_handler import exit_sequence
 from kemai_client.i18n import t
 from kemai_client.logging_setup import setup_logging
-from kemai_client.tray import TrayIcon
+from kemai_client.tray import TrayIcon, close_behaviour
 from kemai_client.ui.main_window import MainWindow
 from kemai_client.ui.settings_window import SettingsWindow
+
+
+def make_close_handler(controller, root, tray, close_to_tray: bool):
+    """Costruisce il gestore di WM_DELETE_WINDOW (la X della finestra).
+
+    Vive a livello di modulo, e non dentro `main()`, perche' sia
+    raggiungibile da un test: quando stava dentro `main()` chiamava
+    `exit_sequence` senza importarla, e la X non usciva dal tutto.
+
+    Args:
+        controller: istanza di AppController.
+        root: finestra Tkinter root.
+        tray: istanza di TrayIcon.
+        close_to_tray: True se l'utente ha scelto "Chiudi nel vassoio".
+
+    Returns:
+        Callable senza argomenti da passare a `root.protocol`.
+    """
+    behavior = close_behaviour(close_to_tray)
+
+    def on_close() -> None:
+        if behavior == "withdraw":
+            # Nascondersi NON e' uscire: l'attivita' deve continuare a
+            # girare e il processo deve restare vivo nel vassoio.
+            root.withdraw()
+        else:
+            exit_sequence(controller, root, tray)
+
+    return on_close
 
 
 def main() -> None:
@@ -57,15 +87,13 @@ def main() -> None:
         preselected = controller.customer_id
         ProjectDialog(root, controller, preselected_customer=preselected)
 
+    def on_quit() -> None:
+        exit_sequence(controller, root, tray)
+
     def _start_main_window() -> None:
         # Costruisce la finestra principale. Chiamata subito se configurati,
         # oppure dopo il salvataggio delle impostazioni al primo avvio.
         MainWindow(root, controller, on_open_settings, on_new_project, on_quit)
-
-
-    def on_quit() -> None:
-        from kemai_client.exit_handler import exit_sequence
-        exit_sequence(controller, root, tray)
 
     # Se la configurazione non è completa, apre Impostazioni.
     if not is_configured(config):
@@ -94,16 +122,9 @@ def main() -> None:
     tray.start()
 
     # WM_DELETE_WINDOW: decide tra nascondi (vassoio) o esci (destroy).
-    def on_close() -> None:
-        from kemai_client.tray import close_behaviour
-
-        behavior = close_behaviour(config.close_to_tray)
-        if behavior == "withdraw":
-            root.withdraw()
-        else:
-            exit_sequence(controller, root, tray)
-
-    root.protocol("WM_DELETE_WINDOW", on_close)
+    root.protocol(
+        "WM_DELETE_WINDOW", make_close_handler(controller, root, tray, config.close_to_tray)
+    )
 
     # Main loop.
     root.mainloop()
