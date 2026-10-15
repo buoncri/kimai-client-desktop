@@ -21,6 +21,8 @@ from kemai_client.i18n import t
 from kemai_client.logging_setup import log_exception
 from kemai_client.models import Activity, Customer, Project
 
+import logging
+
 
 class AppController:
     """Controlla lo stato dell'app e coordina le finestre.
@@ -72,9 +74,6 @@ class AppController:
 
         # Subscriber.
         self._subscribers: List[Callable[[], None]] = []
-
-        # Logger.
-        import logging
 
         self._logger = logging.getLogger("kimai")
 
@@ -205,7 +204,7 @@ class AppController:
             self._customers = self._client.list_customers()
             self._truncated = self._client.last_list_truncated
             self.notify()
-        except KimaiError as exc:
+        except KimaiError:
             self._customers = []
             self._truncated = False
         return self._customers

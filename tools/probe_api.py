@@ -185,7 +185,7 @@ def main() -> int:
             f"  [{r.variant.method:4s}] {redacted:40s} "
             f"-> {r.status:4d}  {r.verdict}"
         )
-        if r.status in (200,) and "OK" == r.verdict:
+        if r.status == 200 and r.verdict == "OK":
             success = True
 
     print(f"\n{'='*70}")
