@@ -33,6 +33,9 @@ class SettingsWindow:
             configurazione e' stata salvata e False se la finestra e'
             stata chiusa senza salvare. Senza questo chi apre la finestra
             non ha modo di sapere quando l'utente ha finito.
+        save_config: callable che persiste la configurazione. Default
+            `kemai_client.config.save`. Iniettarlo permette ai test di
+            salvare senza scrivere il file vero dell'utente.
     """
 
     def __init__(
@@ -41,12 +44,14 @@ class SettingsWindow:
         controller,  # AppController
         on_saved: Callable[[], None] | None = None,
         on_closed: Callable[[bool], None] | None = None,
+        save_config: Callable[[Config], None] | None = None,
     ) -> None:
         self._parent = parent
         self._controller = controller
         self._on_saved = on_saved
         self._on_closed = on_closed
         self._closed = False
+        self._save_config = save_config or save
 
         # --- Finestra ---
         self._window = tk.Toplevel(parent)
@@ -180,7 +185,7 @@ class SettingsWindow:
         )
 
         # Salva su disco (atomico, crea directory se serve).
-        save(self._controller.config)
+        self._save_config(self._controller.config)
 
         # Il client deve rispecchiare la nuova configurazione, e i dati
         # vanno ricaricati dal server (eventualmente diverso).

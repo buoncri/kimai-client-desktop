@@ -17,7 +17,9 @@ piu' frequente. Il sintomo e' intermittente per definizione: passa al
 primo run e fallisce al terzo.
 """
 
+import os
 import sys
+import tempfile
 import tkinter as tk
 from pathlib import Path
 
@@ -26,6 +28,32 @@ import pytest
 # `tools/` non e' un pacchetto installato: si aggiunge al path perche' i
 # suoi script siano testabili senza trasformarli in libreria.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolated_appdata():
+    """Sposta %APPDATA% in una cartella temporanea per tutta la sessione.
+
+    `kemai_client.config.default_path()` costruisce il percorso della
+    configurazione da %APPDATA%. Senza questo, un test che chiama
+    `SettingsWindow.save()` finisce per scrivere la configurazione
+    REALE dell'utente: e' successo, e ha sostituito un token valido con
+    `test-token-not-real`.
+
+    Il file di log segue lo stesso percorso, quindi anche quello viene
+    isolato. Con questa fixture, qualsiasi test puo' scrivere la config
+    senza reale: scrive in una cartella che sparisce a fine sessione.
+    """
+    with tempfile.TemporaryDirectory(prefix="kimai_test_appdata_") as tmp:
+        original = os.environ.get("APPDATA")
+        os.environ["APPDATA"] = tmp
+        try:
+            yield Path(tmp)
+        finally:
+            if original is None:
+                os.environ.pop("APPDATA", None)
+            else:
+                os.environ["APPDATA"] = original
 
 
 @pytest.fixture(scope="session")

@@ -66,14 +66,21 @@ class TestSettingsWindowCloseNotification:
     def test_save_notifies_saved(self, tk_root):
         on_saved = Mock()
         on_closed = Mock()
+        written = Mock()
         win = SettingsWindow(
-            tk_root, _controller(), on_saved=on_saved, on_closed=on_closed
+            tk_root,
+            _controller(),
+            on_saved=on_saved,
+            on_closed=on_closed,
+            save_config=written,
         )
 
         win.save()
 
         on_saved.assert_called_once()
         on_closed.assert_called_once_with(True)
+        # Il file vero non deve essere mai toccato dal test.
+        written.assert_called_once()
 
     def test_notifies_only_once_per_close(self, tk_root):
         """Chiudere due volte non deve far partire due cicli."""
@@ -94,9 +101,28 @@ class TestSettingsWindowCloseNotification:
 
     def test_works_without_callbacks(self, tk_root):
         """Le callback sono facoltative: la finestra resta usabile."""
-        win = SettingsWindow(tk_root, _controller())
+        win = SettingsWindow(tk_root, _controller(), save_config=Mock())
 
         win.cancel()
+
+
+def test_the_real_config_file_is_never_written(tk_root, isolated_appdata):
+    """Nessun test puo' scrivere la configurazione vera dell'utente.
+
+    `isolated_appdata` sposta %APPDATA% in una cartella temporanea: anche
+    se un test chiama il salvataggio senza iniettare nulla, il file che
+    viene scritto non e' quello dell'utente. Questo e' successo: un test
+    aveva sostituito un token valido con `test-token-not-real`.
+    """
+    from kemai_client.config import default_path
+
+    win = SettingsWindow(tk_root, _controller())
+    win.save()
+
+    written = default_path()
+    assert str(written).startswith(str(isolated_appdata)), (
+        f"la config e' stata scritta fuori dalla sandbox: {written}"
+    )
 
 
 class TestSettingsWindow:
