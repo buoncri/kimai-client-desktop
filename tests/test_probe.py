@@ -5,6 +5,7 @@ I test di probe() iniettano un opener finto.
 Nessun test usa token reali o apre socket verso il server.
 """
 
+import base64
 import textwrap
 import urllib.error
 import urllib.request
@@ -95,3 +96,42 @@ class TestProbe:
         results = probe("https://host", "luca", "tok", variants, opener=fake_opener)
         verdicts = [r.verdict for r in results]
         assert all("IRRAGGIUNGIBILE" in v for v in verdicts)
+
+    def test_probe_sends_x_auth_credentials(self):
+        # X-AUTH: gli header devono contenere username e token reali.
+        captured = []
+        variants = build_variants()
+
+        def fake_opener(request):
+            captured.append(request.headers)
+            raise urllib.error.HTTPError(
+                request.full_url, 401, "Unauthorized", {}, None
+            )
+
+        probe("https://host", "luca", "tok", variants, opener=fake_opener)
+        xauth_headers = next(
+            h for h in captured
+            if "X-auth-user" in h
+        )
+        assert xauth_headers["X-auth-user"] == "luca"
+        assert xauth_headers["X-auth-token"] == "tok"
+
+    def test_probe_sends_basic_credentials(self):
+        # Basic: almeno una request ha Authorization decodificabile.
+        captured = []
+        variants = build_variants()
+
+        def fake_opener(request):
+            captured.append(request.headers)
+            raise urllib.error.HTTPError(
+                request.full_url, 401, "Unauthorized", {}, None
+            )
+
+        probe("https://host", "luca", "tok", variants, opener=fake_opener)
+        basic = next(
+            h for h in captured
+            if h.get("Authorization", "").startswith("Basic ")
+        )
+        b64 = basic["Authorization"].split(" ")[1]
+        decoded = (base64.b64decode(b64).decode()).split(":")
+        assert decoded == ["luca", "tok"]

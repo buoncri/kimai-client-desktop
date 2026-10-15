@@ -17,6 +17,7 @@ all'utente in fase di esecuzione.
 
 from __future__ import annotations
 
+import base64
 import getpass
 import sys
 from collections import namedtuple
@@ -123,7 +124,15 @@ def probe(
 
     for variant in variants:
         url = urljoin(host, variant.path)
-        request = urllib.request.Request(url, method=variant.method, headers=variant.headers)
+        headers = dict(variant.headers)
+        if "X-AUTH-USER" in headers:
+            headers["X-AUTH-USER"] = username
+            headers["X-AUTH-TOKEN"] = token
+        elif headers.get("Authorization", "").startswith("Basic "):
+            headers["Authorization"] = "Basic " + base64.b64encode(
+                f"{username}:{token}".encode()
+            ).decode()
+        request = urllib.request.Request(url, method=variant.method, headers=headers)
 
         try:
             response = opener(request)
