@@ -332,10 +332,15 @@ class AppController:
         return project
 
     def toggle(self) -> None:
-        """Start o stop secondo lo stato attuale."""
-        if self._timesheet_id:
+        """Avvia o ferma a seconda dello stato della cascata.
+
+        Se un'attivita' e' in corso la ferma.
+        Se la cascata e' completa (cliente/progetto/attivita' scelti) avvia.
+        Altrimenti e' un no-op: non deve fare richieste al server.
+        """
+        if self.is_running():
             self.stop()
-        else:
+        elif self.can_start():
             self.start()
 
     # --- Errori ---

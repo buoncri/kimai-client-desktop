@@ -415,3 +415,48 @@ class TestStartWallClock:
         assert before <= begin <= datetime.datetime.now()
         today = datetime.date.today().strftime("%d/%m/%Y")
         assert ctrl.started_at_label().startswith(today)
+
+
+class TestToggleThreeWays:
+    def test_toggle_with_incomplete_cascade_does_nothing(self):
+        """Toggle con cascata incompleta non deve fare NESSUNA richiesta."""
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        # manca progetto e attivita': cascata incompleta
+        ctrl.toggle()
+        method_names = [c[0] for c in client.calls]
+        assert "start_timesheet" not in method_names
+        assert "stop_timesheet" not in method_names
+        assert ctrl.is_running() is False
+
+    def test_toggle_starts_when_ready(self):
+        """Toggle avvia quando la cascata e' completa."""
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.toggle()
+        method_names = [c[0] for c in client.calls]
+        assert "start_timesheet" in method_names
+        assert ctrl.is_running() is True
+
+    def test_toggle_stops_when_running(self):
+        """Toggle ferma quando un'attivita' e' gia' in corso."""
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.start()
+        ctrl.toggle()
+        method_names = [c[0] for c in client.calls]
+        assert "stop_timesheet" in method_names
+        assert ctrl.is_running() is False
