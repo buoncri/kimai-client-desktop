@@ -45,6 +45,8 @@ class TestKeys:
             "err_name_empty",
             "tray_show",
             "tray_quit",
+            "warn_truncated",
+            "err_network",
         )
         for key in required:
             assert key in i18n.STRINGS, f"Chiave mancante: {key!r}"
@@ -85,6 +87,8 @@ class TestKeys:
             "err_name_empty",
             "tray_show",
             "tray_quit",
+            "warn_truncated",
+            "err_network",
         ))
         extra = set(i18n.STRINGS.keys()) - required
         assert not extra, f"Chiavi extra non usate: {extra}"
@@ -102,6 +106,11 @@ class TestFormat:
 
 
 class TestValuesAreStrings:
+    def test_new_keys_have_expected_values(self):
+        from kemai_client import i18n
+        assert i18n.t("err_network") == "Rete non disponibile"
+        assert i18n.t("warn_truncated").startswith("Elenco limitato")
+
     def test_all_values_are_strings(self):
         # La UI legge .format() sulle chiavi: se un valore non e' str
         # (es. None o un int), si rompe a runtime.

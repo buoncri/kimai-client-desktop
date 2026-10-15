@@ -2,7 +2,7 @@ r"""Dizionario stringhe italiane per l'intera interfaccia.
 
 Tutte le stringhe visibili all'utente passano da qui, non sono mai
 hardcoded nelle finestre. Il modulo non importa Tkinter, quindi
-puede essere usato anche nei test del controller.
+puo' essere usato anche nei test del controller.
 
 Le chiavi sono un contratto: non aggiungerne nuove senza
 modificare contemporaneamente tests/test_i18n.py.
@@ -50,6 +50,8 @@ STRINGS: dict[str, str] = {
     # --- System tray ---
     "tray_show": "Mostra finestra",
     "tray_quit": "Esci",
+    "warn_truncated": "Elenco limitato: seleziona un altro elemento per vederne altri",
+    "err_network": "Rete non disponibile",
 }
 
 
