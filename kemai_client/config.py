@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Union
 
@@ -47,7 +47,7 @@ def default_path() -> Path:
 
     Restituisce %APPDATA%\\KimaiClient\\config.json.
     """
-    return Path(os.environ["APPDATA"]) / "KimaiClient" / "config.json"
+    return Path(os.environ.get("APPDATA") or Path.home()) / "KimaiClient" / "config.json"
 
 
 def load(path: Union[Path, str, None] = None) -> Config:
@@ -70,7 +70,7 @@ def load(path: Union[Path, str, None] = None) -> Config:
         path = Path(path)
 
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError):
         # File mancante, permission denied o JSON malformato:

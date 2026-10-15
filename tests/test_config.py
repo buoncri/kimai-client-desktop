@@ -148,3 +148,12 @@ class TestVerifyTls:
         path = tmp_path / "config.json"
         path.write_text(json.dumps({"host": "https://host", "username": "u", "token": "t"}))
         assert load(path).verify_tls is True
+  
+class TestDefaultPathWithoutAppdata:  
+  
+    def test_default_path_without_appdata(self, monkeypatch):  
+        monkeypatch.delenv("APPDATA", raising=False)  
+        from kemai_client.config import default_path  
+        p = default_path()  
+        assert p.name == "config.json"  
+        assert p.parent.name == "KimaiClient"  
