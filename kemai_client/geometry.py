@@ -3,7 +3,6 @@
 L'ottagono ha 8 vertici equidistanti a 45° l'uno dall'altro,
 partendo da 22,5° (il punto a destra dell'orologio è a 0°).
 Il piano cartesiano di riferimento usa y verso l'alto;
-chiama questa funzione con cy negativo per il sistema Tkinter.
 """
 
 import math

@@ -11,6 +11,7 @@ Non importa Tkinter, non importa pystray.
 from __future__ import annotations
 
 import datetime
+import logging
 import time
 from typing import Callable, List, Optional
 
@@ -21,7 +22,7 @@ from kemai_client.i18n import t
 from kemai_client.logging_setup import log_exception
 from kemai_client.models import Activity, Customer, Project
 
-import logging
+
 
 
 class AppController:
@@ -229,7 +230,6 @@ class AppController:
             self._truncated = self._client.last_list_truncated
         except KimaiError as exc:
             log_exception(self._logger, exc, "select_customer")
-            pass
 
         self._last_error_msg = ""
         self.notify()
@@ -251,7 +251,6 @@ class AppController:
             self._truncated = self._client.last_list_truncated
         except KimaiError as exc:
             log_exception(self._logger, exc, "select_project")
-            pass
 
         if not self._activities:
             self._last_error_msg = t("err_project_no_activities")

@@ -22,6 +22,7 @@ _WIDTH = 282
 _HEIGHT = 312
 _START_TICK_DELAY_MS = 1000
 
+
 def _select_by_id(combo, items, wanted_id) -> None:
     """Seleziona in combo l'indice dell'item con id == wanted_id."""
     for i, item in enumerate(items):

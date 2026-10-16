@@ -17,7 +17,6 @@ nel repository.
 
 from __future__ import annotations
 
-import math
 import threading
 from kemai_client.geometry import octagon_points
 from typing import Callable

@@ -7,7 +7,6 @@ Tutte le etichette usate a schermo passano da `i18n.t()`, mai
 test hardcoded qui.
 """
 
-import math
 from typing import Callable
 
 from kemai_client.geometry import octagon_points
