@@ -176,13 +176,13 @@ class SettingsWindow:
         close_to_tray = self._chk_tray.get()
 
         # Aggiorna il controller con i valori della finestra.
-        self._controller._config = Config(  # type: ignore[attr-defined]
+        self._controller.update_config(Config(
             host=host,
             username=username,
             token=token,
             close_to_tray=close_to_tray,
             verify_tls=not self._chk_tls_ignore.get(),
-        )
+        ))
 
         # Salva su disco (atomico, crea directory se serve).
         self._save_config(self._controller.config)

@@ -84,6 +84,11 @@ class AppController:
     def config(self) -> Config:
         return self._config
 
+    def update_config(self, config: Config) -> None:
+        """Sostituisce la config e ricostruisce il client."""
+        self._config = config
+        self.apply_config()
+
     @property
     def customers(self) -> List[Customer]:
         return self._customers

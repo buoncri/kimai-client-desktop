@@ -482,6 +482,18 @@ class TestClientLifecycle:
         assert ctrl._client is not old
         assert ctrl._client.verify_tls is False
 
+    def test_update_config_rebuilds_client(self):
+        # update_config deve sostituire la config e ricostruire il client.
+        config1 = Config(host="https://old", username="u", token="t")
+        ctrl = AppController(lambda h, u, t: FakeClient(), config=config1)
+        old_client = ctrl._client
+        new_config = Config(host="https://new", username="u2", token="t2")
+        ctrl.update_config(new_config)
+        # Il client deve essere stato ricostruito.
+        assert ctrl._client is not old_client
+        assert ctrl.config == new_config
+        assert ctrl._client.verify_tls is True  # default True
+
 
 # --- Start/stop: orologio da parete verso l'API (verificato live) ---
 
