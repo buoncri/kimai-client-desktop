@@ -24,7 +24,6 @@ from kemai_client.models import Activity, Customer, Project
 
 
 
-
 class AppController:
     """Controlla lo stato dell'app e coordina le finestre.
 

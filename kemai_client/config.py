@@ -15,7 +15,6 @@ import json
 import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Union
 
 
 @dataclass
@@ -50,7 +49,7 @@ def default_path() -> Path:
     return Path(os.environ.get("APPDATA") or Path.home()) / "KimaiClient" / "config.json"
 
 
-def load(path: Union[Path, str, None] = None) -> Config:
+def load(path: Path | str | None = None) -> Config:
     """Legge la configurazione da disco.
 
     Se il file non esiste o il suo contenuto non e' JSON valido,
@@ -82,7 +81,7 @@ def load(path: Union[Path, str, None] = None) -> Config:
     return Config(**{k: v for k, v in data.items() if k in Config.__dataclass_fields__})
 
 
-def save(config: Config, path: Union[Path, str, None] = None) -> None:
+def save(config: Config, path: Path | str | None = None) -> None:
     """Scrive la configurazione su disco in modo atomico.
 
     Scrive su <path>.tmp nella stessa directory, poi rinomina
