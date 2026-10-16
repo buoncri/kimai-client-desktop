@@ -87,6 +87,12 @@ class FakeClient:
         self._created_projects[customer_id].append(project)
         return self.record("create_project", return_value=project)
 
+    def get_active_timesheet(self):
+        return self.record("get_active_timesheet", return_value=self._active_timesheet)
+
+    def set_active_timesheet(self, data):
+        self._active_timesheet = data
+
 
 class TestSelectCascade:
     def test_select_customer_returns_projects(self):
@@ -493,6 +499,105 @@ class TestClientLifecycle:
         assert ctrl._client is not old_client
         assert ctrl.config == new_config
         assert ctrl._client.verify_tls is True  # default True
+
+
+class TestCheckActiveSession:
+    """Rilevamento e ripresa di una timesheet attiva all'avvio."""
+
+    def test_check_active_session_sets_state_when_found(self):
+        """Se c'e' un timesheet attivo, il controller deve caricarne lo stato."""
+        client = FakeClient()
+        client.set_active_timesheet({
+            "id": 42,
+            "begin": "2026-10-16 08:30:00",
+            "project": 10,
+            "activity": 100,
+        })
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        result = ctrl.check_active_session()
+        assert result is True
+        assert ctrl.is_running()
+        assert ctrl._timesheet_id == 42
+        assert ctrl._started_wall == datetime.datetime(2026, 10, 16, 8, 30)
+        assert ctrl._started_at > 0
+
+    def test_check_active_session_elapsed_uses_server_begin(self):
+        """_started_at deve riflettere il begin del server, non l'orologio locale."""
+        client = FakeClient()
+        begin = datetime.datetime.now() - datetime.timedelta(hours=2)
+        client.set_active_timesheet({
+            "id": 42,
+            "begin": begin.strftime("%Y-%m-%d %H:%M:%S"),
+            "project": 10,
+            "activity": 100,
+        })
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.check_active_session()
+        elapsed = ctrl.elapsed_seconds()
+        # 2 ore = 7200 secondi, con margine per l'esecuzione del test
+        assert 7100 < elapsed < 7300
+
+    def test_check_active_session_aligns_cascade(self):
+        """La cascata deve allinearsi al progetto della sessione attiva."""
+        client = FakeClient()
+        client.set_active_timesheet({
+            "id": 42,
+            "begin": "2026-10-16 08:30:00",
+            "project": 10,
+            "activity": 100,
+        })
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.check_active_session()
+        assert ctrl.customer_id == 1
+        assert ctrl.project_id == 10
+        assert ctrl.activity_id == 100
+
+    def test_check_active_session_noop_when_none(self):
+        """Se non c'e' nessun timesheet attivo, check_active_session e' un no-op."""
+        client = FakeClient()
+        client.set_active_timesheet(None)
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        result = ctrl.check_active_session()
+        assert result is False
+        assert not ctrl.is_running()
+        assert ctrl._timesheet_id is None
+
+    def test_check_active_session_handles_error(self):
+        """Se l'API fallisce, check_active_session non blocca l'avvio."""
+        client = FakeClient()
+        client.get_active_timesheet = MagicMock(
+            side_effect=KimaiError("server error")
+        )
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        result = ctrl.check_active_session()
+        assert result is False
+        assert not ctrl.is_running()
+
+    def test_align_cascade_resets_activity_when_project_has_none(self):
+        """Se il progetto della sessione non ha attivita', _activity_id deve essere None."""
+        client = FakeClient()
+        client.set_active_timesheet({
+            "id": 42,
+            "begin": "2026-10-16 08:30:00",
+            "project": 11,
+            "activity": 100,
+        })
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl._activity_id = 999  # valore da una sessione precedente
+        ctrl.check_active_session()
+        # Progetto 11 non ha attivita' nel FakeClient, quindi deve essere None
+        assert ctrl.project_id == 11
+        assert ctrl.activity_id is None
 
 
 # --- Start/stop: orologio da parete verso l'API (verificato live) ---

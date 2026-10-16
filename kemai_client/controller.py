@@ -84,9 +84,98 @@ class AppController:
         return self._config
 
     def update_config(self, config: Config) -> None:
-        """Sostituisce la config e ricostruisce il client."""
+        """Sostituisce la config e ricostruisci il client."""
         self._config = config
         self.apply_config()
+
+    def check_active_session(self) -> bool:
+        """Controlla se sul server c'e' gia' un timesheet attivo.
+
+        All'avvio, se l'utente ha dimenticato di fermare una sessione,
+        il server la tiene ancora aperta. Questo metodo la rileva e
+        ricarica il suo stato nel controller, cosi' il cronometro riprende
+        da dove era e il pulsante Ferma funziona subito.
+
+        Returns:
+            True se e' stata trovata e caricata una sessione attiva.
+        """
+        try:
+            data = self._client.get_active_timesheet()
+        except KimaiError as exc:
+            log_exception(self._logger, exc, "check_active_session")
+            return False
+
+        if data is None:
+            return False
+
+        identifier = data.get("id", data.get("ID"))
+        if identifier is None:
+            return False
+
+        begin_str = data.get("begin")
+        if begin_str is None:
+            return False
+
+        try:
+            begin = datetime.datetime.strptime(begin_str, "%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError):
+            try:
+                begin = datetime.datetime.fromisoformat(begin_str)
+            except (TypeError, ValueError):
+                return False
+
+        self._timesheet_id = int(identifier)
+        self._started_wall = begin
+        # Calcola _started_at in modo che elapsed_seconds() restituisca
+        # il tempo trascorso dal begin del server, non da ora.
+        now_wall = datetime.datetime.now()
+        elapsed_since_begin = (now_wall - begin).total_seconds()
+        self._started_at = self._clock() - elapsed_since_begin
+        self._last_error_msg = ""
+
+        # Allinea la cascata: trova il cliente del progetto e carica
+        # progetti/attivita' perche' i dropdown mostrino la selezione giusta.
+        project_id = data.get("project")
+        if project_id is not None:
+            self._align_cascade_to_project(int(project_id))
+
+        self.notify()
+        return True
+
+    def _align_cascade_to_project(self, project_id: int) -> None:
+        """Trova il cliente di un progetto e allinea la cascata.
+
+        Il timesheet attivo referenzia un progetto, ma il server non
+        diretta il cliente. Lo cerca tra i clienti noti e carica
+        progetti/attivita' corrispondenti.
+        """
+        self._activity_id = None
+        for customer in self._customers:
+            try:
+                projects = self._client.list_projects(customer.id)
+            except KimaiError:
+                continue
+            for project in projects:
+                if project.id == project_id:
+                    self._customer_id = customer.id
+                    self._project_id = project_id
+                    self._projects = projects
+                    self._truncated = self._client.last_list_truncated
+                    activity_id = self._find_activity_in_project(project_id)
+                    if activity_id is not None:
+                        self._activity_id = activity_id
+                        self._activities = self._client.list_activities(project_id)
+                    return
+
+    def _find_activity_in_project(self, project_id: int) -> Optional[int]:
+        """Trova la prima attivita' di un progetto, se esiste."""
+        try:
+            activities = self._client.list_activities(project_id)
+        except KimaiError:
+            return None
+        if activities:
+            return activities[0].id
+        return None
 
     @property
     def customers(self) -> List[Customer]:

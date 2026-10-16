@@ -161,7 +161,14 @@ class MainWindow:
         # risposta del server arriva quando arriva. Solo se il controller
         # non ha gia' clienti (es. caricati dal salvataggio impostazioni).
         if not self._controller.customers:
-            self._root.after(50, self._controller.load_customers)
+            self._root.after(50, self._load_data_and_check_session)
+        else:
+            self._controller.check_active_session()
+
+    def _load_data_and_check_session(self) -> None:
+        """Carica i dati dal server e controlla se c'e' una sessione attiva."""
+        self._controller.load_customers()
+        self._controller.check_active_session()
 
     # --- Callback cascata ---
 

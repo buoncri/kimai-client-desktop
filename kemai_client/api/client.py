@@ -364,3 +364,16 @@ class KimaiClient:
             if identifier is not None:
                 return Project(identifier, str(payload.get("name", name)), customer_id)
         raise KimaiError("Il server non ha restituito il nuovo progetto.")
+
+    def get_active_timesheet(self) -> dict | None:
+        """Restituisce il timesheet attivo (senza campo `end`), o None.
+
+        Verificato live (2026-10-08): GET /api/timesheets esiste.
+        Un timesheet attivo e' riconoscibile dall'assenza del campo `end`.
+        """
+        payload = self._request("GET", endpoints.TIMESHEETS)
+        items = _as_list(payload)
+        for item in items:
+            if item.get("end") is None:
+                return item
+        return None
