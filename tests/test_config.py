@@ -156,4 +156,145 @@ class TestDefaultPathWithoutAppdata:
         from kemai_client.config import default_path  
         p = default_path()  
         assert p.name == "config.json"  
-        assert p.parent.name == "KimaiClient"  
+        assert p.parent.name == "KimaiClient"
+
+
+class TestLoadNonObject:
+    """JSON valido ma non-dizionario deve restituire Config() di default."""
+
+    def test_load_json_list(self, tmp_path):
+        path = tmp_path / "list.json"
+        path.write_text(json.dumps([1, 2, 3]))
+        cfg = load(path)
+        assert cfg == Config()
+
+    def test_load_json_string(self, tmp_path):
+        path = tmp_path / "string.json"
+        path.write_text(json.dumps("hello"))
+        cfg = load(path)
+        assert cfg == Config()
+
+    def test_load_json_number(self, tmp_path):
+        path = tmp_path / "number.json"
+        path.write_text(json.dumps(42))
+        cfg = load(path)
+        assert cfg == Config()
+
+    def test_load_json_bool(self, tmp_path):
+        path = tmp_path / "bool.json"
+        path.write_text(json.dumps(True))
+        cfg = load(path)
+        assert cfg == Config()
+
+    def test_load_json_null(self, tmp_path):
+        path = tmp_path / "null.json"
+        path.write_text(json.dumps(None))
+        cfg = load(path)
+        assert cfg == Config()
+
+
+class TestLoadTypeMismatch:
+    """Campi con tipo incompatibile usano il default, senza crash."""
+
+    def test_host_string_instead_of_int(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": 123, "username": "u", "token": "t"}))
+        cfg = load(path)
+        assert cfg.host == ""  # default
+        assert cfg.username == "u"
+        assert cfg.token == "t"
+
+    def test_last_customer_id_string_instead_of_int(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "last_customer_id": "42"}))
+        cfg = load(path)
+        assert cfg.last_customer_id is None  # default
+
+    def test_verify_tls_number_instead_of_bool(self, tmp_path):
+        # 1 è int, non bool: il default per verify_tls è True.
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "verify_tls": 1}))
+        cfg = load(path)
+        assert cfg.verify_tls is True
+
+    def test_close_to_tray_string_instead_of_bool(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "close_to_tray": "yes"}))
+        cfg = load(path)
+        assert cfg.close_to_tray is False
+
+    def test_host_none_uses_default(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": None, "username": "u", "token": "t"}))
+        cfg = load(path)
+        assert cfg.host == ""  # default
+
+    def test_username_none_uses_default(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": None, "token": "t"}))
+        cfg = load(path)
+        assert cfg.username == ""  # default
+
+    def test_token_none_uses_default(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": None}))
+        cfg = load(path)
+        assert cfg.token == ""  # default
+
+    def test_verify_tls_none_uses_default(self, tmp_path):
+        # None su un campo bool: per verify_tls il default è True.
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "verify_tls": None}))
+        cfg = load(path)
+        assert cfg.verify_tls is True
+
+    def test_close_to_tray_none_uses_default(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "close_to_tray": None}))
+        cfg = load(path)
+        assert cfg.close_to_tray is False
+
+    def test_last_customer_id_none_is_valid(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "last_customer_id": None}))
+        cfg = load(path)
+        assert cfg.last_customer_id is None
+
+    def test_unknown_fields_ignored(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "h", "username": "u", "token": "t", "future_field": 999}))
+        cfg = load(path)
+        assert cfg.host == "h"
+        assert cfg.username == "u"
+        assert cfg.token == "t"
+        assert cfg.last_customer_id is None
+
+    def test_valid_roundtrip_still_works(self, tmp_path):
+        path = tmp_path / "config.json"
+        cfg = Config(
+            host="https://host",
+            username="u",
+            token="t",
+            close_to_tray=True,
+            last_customer_id=42,
+            last_project_id=7,
+            verify_tls=False,
+        )
+        save(cfg, path)
+        assert load(path) == cfg
+
+    def test_roundtrip_persists_verify_tls(self, tmp_path):
+        path = tmp_path / "config.json"
+        cfg = Config(
+            host="https://host",
+            username="u",
+            token="t",
+            verify_tls=False,
+        )
+        save(cfg, path)
+        assert load(path).verify_tls is False
+
+    def test_old_config_without_key_verifies_tls(self, tmp_path):
+        path = tmp_path / "config.json"
+        path.write_text(json.dumps({"host": "https://host", "username": "u", "token": "t"}))
+        assert load(path).verify_tls is True

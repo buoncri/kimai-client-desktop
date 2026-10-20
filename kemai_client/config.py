@@ -15,6 +15,7 @@ import json
 import os
 from dataclasses import dataclass, asdict
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -49,6 +50,71 @@ def default_path() -> Path:
     return Path(os.environ.get("APPDATA") or Path.home()) / "KimaiClient" / "config.json"
 
 
+def _coerce_field(name: str, value: Any, type_hint, default_value: Any) -> tuple[str, Any]:
+    """Coerces a single field value to its expected type.
+
+    Returns (field_name, coerced_value). If coercion fails (incompatible type
+    or None on a non-nullable field), *default_value* is returned.
+
+    For nullable fields (e.g. int | None), None is accepted as valid.
+
+    This prevents a Config() from raising TypeError when the
+    stored JSON has an incompatible value type (e.g. a string
+    where an int is expected).
+    """
+    # For nullable fields (int | None), None is valid → keep it.
+    # A field is nullable when its default is None (e.g. last_customer_id: int | None = None).
+    if value is None and default_value is None:
+        return (name, None)
+
+    if value is None:
+        return (name, default_value)
+
+    if type_hint == str:
+        if isinstance(value, str):
+            return (name, value)
+        return (name, default_value)
+
+    if type_hint == bool:
+        if isinstance(value, bool):
+            return (name, value)
+        return (name, default_value)
+
+    if type_hint == int:
+        if isinstance(value, int) and not isinstance(value, bool):
+            return (name, value)
+        return (name, default_value)
+
+    return (name, default_value)
+
+
+def _load_from_dict(data: dict) -> Config:
+    """Build a Config from a dict, coercing each field to its expected type.
+
+    Fields with an incompatible type silently fall back to the
+    dataclass default, so the app never crashes on a corrupted config.
+    """
+    fields: dict[str, tuple[type, Any]] = {
+        "host": (str, ""),
+        "username": (str, ""),
+        "token": (str, ""),
+        "close_to_tray": (bool, False),
+        "last_customer_id": (int, None),
+        "last_project_id": (int, None),
+        "verify_tls": (bool, True),
+    }
+
+    result: dict[str, Any] = {}
+    for k, v in data.items():
+        if k not in fields:
+            continue
+        type_hint, default = fields[k]
+        name, coerced = _coerce_field(k, v, type_hint, default)
+        result[name] = coerced
+
+    return Config(**result)
+
+
 def load(path: Path | str | None = None) -> Config:
     """Legge la configurazione da disco.
 
@@ -59,6 +125,10 @@ def load(path: Path | str | None = None) -> Config:
     I campi sconosciuti presenti nel JSON vengono ignorati,
     perche' una configurazione scritta da una versione futura
     non deve rompere una versione precedente.
+
+    Se un valore e' di tipo incompatibile (es. una stringa dove si
+    aspetta un intero), il valore viene ignorato e usato il default
+    della dataclass.
 
     Args:
         path: Percorso del file. Se None, usa default_path().
@@ -76,9 +146,14 @@ def load(path: Path | str | None = None) -> Config:
         # torniamo un Config di default.
         return Config()
 
+    # JSON valido ma non un oggetto (lista, stringa, numero, booleano, null)
+    # restituiamo un Config() con tutti i default.
+    if not isinstance(data, dict):
+        return Config()
+
     # Costruiamo il Config dai dati del file. I campi non presenti
     # nel dizionario usano i default della dataclass.
-    return Config(**{k: v for k, v in data.items() if k in Config.__dataclass_fields__})
+    return _load_from_dict(data)
 
 
 def save(config: Config, path: Path | str | None = None) -> None:
