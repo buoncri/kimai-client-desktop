@@ -92,6 +92,38 @@ Il task che il main compone per il reviewer deve contenere:
 Il main, a sua volta, **non risponde alle domande tecniche del reviewer**: legge
 la review finale e decide (o escala all'umano).
 
+### 5.1 Il piano passa dal main
+
+`oracle` e' **read-only** (`acceptanceRole: read-only`, tool: read, grep, find, ls,
+bash): non puo' scrivere `plan.md`. Il piano esce come testo dalla sessione
+dell'oracle e **il main lo persiste in `plan.md`**; da li' il worker lo legge da
+solo (`defaultReads: context.md, plan.md`). Il main e' l'unico scrittore di
+artefatti di passaggio.
+
+### 5.2 Il costo del reviewer e' (turni x prefill), non il modello
+
+Misura su Qwen3-Coder (task B, diff con bug): 18 tool call, contesto cresciuto a
+~9,5k token, **18 minuti**, di cui ~8 minuti di due round-trip
+`contact_supervisor` (4 min ciascuno) e il resto prefill a 37 t/s (Qwen3.8 sul
+task A: 8 turni, 11 tool call, 313 s, 1,6k token).
+
+Da qui due regole operative:
+
+1. **il reviewer non deve fare domande**: `contact_supervisor` e' vietato per
+   giudicare un finding (l'incumbent, che e' anche l'autore del piano, puo'
+   convincerlo a droppare un finding: e' successo: "This is intentional... but
+   maybe the tests are wrong");
+2. **i turni del reviewer vanno ridotti al minimo**: diff, file rilevanti ed
+   estratti dei test vanno messi **nel prompt**, cosi' il reviewer risponde in
+   3-4 turni invece di 18 (stima: 3-5 minuti invece di 18-30).
+
+Nota di qualita': lo stesso Qwen3-Coder ha prodotto **una finding inventata**
+("un `return points` dentro il for loop" che nel diff non c'e') pur avendo
+trovato il bug reale e citato correttamente `test_geometry.py:22` e
+`test_widgets.py:85`. Il rischio di allucinazione va tenuto presente: da qui
+l'obbligo di formato e la review incrociata con i test.
+
+
 ## 6. Costi misurati (riassunto)
 
 Ruolo worker/coder, due task reali:
@@ -130,12 +162,15 @@ bastano); la sessione main e' l'unico vero consumatore (~45k token, ~3 GB di KV)
    di *scoperta* (trovare il bug), non di *esecuzione di un piano*. Va fatta una
    run con `plan.md` reale: il worker deve eseguire, non scoprire.
 2. **Il reviewer indipendente: quale modello.** Qwen3-Coder-30B-A3B ha **rilevato
-   il bug seminato** con citazioni `file:line` e verdict BLOCK, ma la run e' stata
-   lenta (18 min di cui ~8 di round-trip `contact_supervisor`, cioe' protocollo e
-   non modello) e ha prodotto **un'allucinazione** ("un `return points` dentro il
-   for loop" che nel diff non c'e'). Alternative in valutazione: GLM-4.7-Flash
-   (17,5 GB, famiglia diversa, MoE), Qwen3.5-9B (6,9 GB, economico), Ornith-1.5-35B-A3B
-   (22,6 GB, A3B + coding/reasoning/tool-calling).
+   il bug seminato** (P0 sull'angolo iniziale, P1 sul docstring di
+   `kemai_client/ui/widgets.py:37`, P1 sui test, `Merge verdict: BLOCK`) ma la run
+   e' stata lenta (18 min di cui ~8 di round-trip `contact_supervisor`, cioe'
+   protocollo e non modello) e ha prodotto **un'allucinazione** ("un `return points`
+   dentro il for loop" che nel diff non c'e'). Alternative in valutazione:
+   GLM-4.7-Flash (17,5 GB, famiglia diversa, in download), Qwen3.5-9B (6,9 GB,
+   economico), Ornith-1.5-35B-A3B (22,6 GB, A3B + coding/reasoning/tool-calling).
+   Il confronto va fatto sul task B (diff con bug seminato): detection, falsi
+   positivi, tempo.
 3. **Contesto dei modelli grandi**: il `ctx_size` richiesto per Qwen3-Coder non e'
    stato riconosciuto (Pi pubblica 262,1K nativi invece di 32k) e va sistemato; va
    misurata la pendenza della KV con un carico lungo.
