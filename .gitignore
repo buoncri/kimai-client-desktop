@@ -35,3 +35,6 @@ config.json
 
 # Strumenti agenti locali (config e cache, mai da tracciare)
 .pi/
+
+# Output locali delle run di orchestrazione (mai da tracciare)
+pipeline_output/
