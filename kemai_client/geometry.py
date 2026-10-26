@@ -18,3 +18,45 @@ def octagon_points(cx: float, cy: float, r: float) -> list[float]:
         y = cy - r * math.sin(angle_rad)
         points.extend((x, y))
     return points
+
+
+def circle_points(cx: float, cy: float, r: float, n: int) -> list[tuple[float, float]]:
+    """Restituisce i n vertici di una circonferenza centrata in (cx,cy) con raggio r.
+
+    Il primo vertice è a angolo 0 rad: (cx+r, cy).
+    I vertici sono in ordine anti-orario (angolo crescente).
+    Niente chiusura duplicata: se n=3 si ottengono 3 punti, non 4.
+
+    Il piano cartesiano usa y verso l'alto (sentito matematico standard).
+
+    Args:
+        cx: coordinata x del centro.
+        cy: coordinata y del centro.
+        r:  raggio (deve essere > 0).
+        n:  numero di vertici (deve essere un intero positivo).
+
+    Returns:
+        Lista di tuple (x, y) con n punti.
+
+    Raises:
+        TypeError: se n non è un intero.
+        ValueError: se n <= 0.
+
+    Examples:
+        >>> circle_points(0, 0, 1, 4)
+        [(1.0, 0.0), (0.0, 1.0), (-1.0, 0.0), (0.0, -1.0)]
+        >>> circle_points(0, 0, 1, 3)
+        [(1.0, 0.0), (-0.5, 0.8660254037844386), (-0.5, -0.8660254037844386)]
+    """
+    if not isinstance(n, int):
+        raise TypeError(f"n deve essere un intero, non {type(n).__name__}")
+    if n <= 0:
+        raise ValueError(f"n deve essere positivo, non {n}")
+
+    points: list[tuple[float, float]] = []
+    for i in range(n):
+        theta = 2.0 * math.pi * i / n
+        x = cx + r * math.cos(theta)
+        y = cy + r * math.sin(theta)
+        points.append((x, y))
+    return points
