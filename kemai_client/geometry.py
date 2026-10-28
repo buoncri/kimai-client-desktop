@@ -8,6 +8,36 @@ Il piano cartesiano di riferimento usa y verso l'alto;
 import math
 
 
+def lerp(a: float, b: float, t: float) -> float:
+    """Interpolazione lineare tra `a` e `b` al parametro `t`.
+
+    Calcola `a + (b - a) * t`. Se `t` e fuori dall'intervallo `[0, 1]`
+    viene **clamped** a `[0, 1]` prima del calcolo.
+
+    Il piano cartesiano usa y verso l'alto (sentito matematico standard).
+
+    Args:
+        a: valore di partenza.
+        b: valore di arrivo.
+        t: parametro di interpolazione (clamp a [0, 1]).
+
+    Returns:
+        Il valore interpolato tra a e b.
+
+    Examples:
+        >>> lerp(0, 10, 0.5)
+        5.0
+        >>> lerp(0, 10, -1.0)
+        0.0
+        >>> lerp(0, 10, 2.0)
+        10.0
+        >>> lerp(5, 5, 0.5)
+        5.0
+    """
+    t = max(0.0, min(1.0, t))
+    return a + (b - a) * t
+
+
 def octagon_points(cx: float, cy: float, r: float) -> list[float]:
     """Restituisce i 16 float (x,y) × 8 vertici dell'ottagono."""
     points: list[float] = []
