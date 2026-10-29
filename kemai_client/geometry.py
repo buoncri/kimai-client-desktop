@@ -66,6 +66,40 @@ def polyline_length(points: list[tuple[float, float]]) -> float:
         for i in range(len(points) - 1)
     )
 
+
+def polygon_area(points: list[tuple[float, float]]) -> float:
+    """Calcola l'area del polygono definito dai vertici `points` (ordine ciclico).
+
+    Applicabilmente la formula di shoelace.
+
+    Args:
+        points: lista di tuple (x, y) dei vertici del polygono.
+
+    Returns:
+        Area del polygono. Indice ciclico: il punto dopo il ultimo è il primo.
+
+    Raises:
+        ValueError: se `points` contiene meno di 3 punti.
+
+    Examples:
+        >>> polygon_area([(0, 0), (4, 0), (4, 3), (0, 3)])
+        12.0
+        >>> polygon_area([(0, 0), (0, 0), (0, 0)])
+        Traceback (most recent call last):
+            ...
+        ValueError: il polygono richiede almeno 3 punti
+    """
+    if len(points) < 3:
+        raise ValueError("Il polygono richiede almeno 3 punti")
+    total = 0.0
+    n = len(points)
+    for i in range(n):
+        x_i, y_i = points[i]
+        x_j, y_j = points[(i + 1) % n]
+        total += x_i * y_j - x_j * y_i
+    return 0.5 * abs(total)
+
+
 def octagon_points(cx: float, cy: float, r: float) -> list[float]:
     """Restituisce i 16 float (x,y) × 8 vertici dell'ottagono."""
     points: list[float] = []

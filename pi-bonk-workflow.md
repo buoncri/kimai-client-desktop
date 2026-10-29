@@ -38,7 +38,7 @@ ruolo coperto da Flint (profondo) e frog (routine).
   `backups\settings-ornith-removal-20261028.json` (+ storici: `settings-qwen-main-arm-20261026`,
   `.bak-flint-20261026`, `stack-step1-20261023`)
 - Deposito: commit `2076bb0` (lerp) + `6dbeba4` (polyline_length) su main; baseline attesa
-  **"1 failed, 287 passed"** (`TestCheckActiveSession`, permanente — aggiornare il numero a ogni
+  **"1 failed, 297 passed"** (`TestCheckActiveSession`, permanente — aggiornare il numero a ogni
   commit di test); test sempre col venv del repo (`.venv\Scripts\python.exe -m pytest`)
 
 ## Invocazione subagent (schema del tool, pi-subagents)
@@ -58,7 +58,7 @@ subagent({ "agent": "oracle", "task": "..." })
 
 ## Regole operative
 
-- Baseline test intoccata: "1 failed, 277 passed" è l'attesa in ogni run
+- Baseline test intoccata: "1 failed, 297 passed" è l'attesa in ogni run
 - Perimetro drift dichiarato nel piano; worker unico scrittore; review indipendente
 - Teatro: server HTTP porta **13305** (`/api/v1/health`; 9000 = WebSocket); `NO_PROXY=127.0.0.1`
   con Invoke-RestMethod; log `$env:TEMP\lemonade-server.log`
