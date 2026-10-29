@@ -38,6 +38,34 @@ def lerp(a: float, b: float, t: float) -> float:
     return a + (b - a) * t
 
 
+def polyline_length(points: list[tuple[float, float]]) -> float:
+    """Calcola la lunghezza della spezzata definita da `points`.
+
+    Somma le distanze euclidee tra punti consecutivi.
+
+    Args:
+        points: lista di tuple (x, y).
+
+    Returns:
+        Lunghezza totale della spezzata.
+
+    Raises:
+        ValueError: se `points` contiene meno di 2 punti.
+
+    Examples:
+        >>> polyline_length([(0, 0), (3, 4)])
+        5.0
+        >>> polyline_length([(0, 0), (1, 0), (1, 1)])
+        2.0
+    """
+    if len(points) < 2:
+        raise ValueError("La spezzata richiede almeno 2 punti")
+    return sum(
+        math.hypot(points[i + 1][0] - points[i][0],
+                   points[i + 1][1] - points[i][1])
+        for i in range(len(points) - 1)
+    )
+
 def octagon_points(cx: float, cy: float, r: float) -> list[float]:
     """Restituisce i 16 float (x,y) × 8 vertici dell'ottagono."""
     points: list[float] = []
