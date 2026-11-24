@@ -723,8 +723,7 @@ class TestDescription:
         ctrl.select_customer(1)
         ctrl.select_project(10)
         ctrl.select_activity(100)
-        ctrl.set_description("Test toggle")
-        ctrl.toggle()
+        ctrl.toggle("Test toggle")
         method, kwargs = client.calls[-1]
         assert method == "start_timesheet"
         assert kwargs["description"] == "Test toggle"

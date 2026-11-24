@@ -448,7 +448,7 @@ class AppController:
         self.notify()
         return project
 
-    def toggle(self) -> None:
+    def toggle(self, description: str = "") -> None:
         """Avvia o ferma a seconda dello stato della cascata.
 
         Se un'attivita' e' in corso la ferma.
@@ -458,7 +458,7 @@ class AppController:
         if self.is_running():
             self.stop()
         elif self.can_start():
-            self.start(self._description)
+            self.start(description)
 
     def set_description(self, description: str) -> None:
         """Imposta la descrizione per il prossimo avvio."""

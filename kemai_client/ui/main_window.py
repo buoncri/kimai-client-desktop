@@ -205,8 +205,7 @@ class MainWindow:
     def _on_toggle(self) -> None:
         description = self._entry_description.get()
         try:
-            self._controller.set_description(description)
-            self._controller.toggle()
+            self._controller.toggle(description)
         except RuntimeError:
             self._entry_description.delete(0, tk.END)
             self._entry_description.insert(0, self._controller.last_error)
@@ -217,7 +216,7 @@ class MainWindow:
         """Rilegge lo stato dal controller e aggiorna tutti i widget."""
         self._refresh_combos()
         self._refresh_state()
-        # La descrizione si resetta quando il timesheet viene chiuso.
+        # La descrizione si resetta quando il timesheet viene chiuso o in caso di errore (es. sovrapposizione).
         if not self._controller.is_running():
             self._entry_description.delete(0, tk.END)
 
