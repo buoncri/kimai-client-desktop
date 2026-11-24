@@ -30,7 +30,7 @@ class AppController:
     E' l'unico detentore dello stato. La UI legge i suoi attributi
     e lo notifica tramite `subscribe()`.
 
-    Args:
+    Argomenti:
         client_factory: factory per creare il KimaiClient. Il default
             e' `lambda host, username, token: KimaiClient(host, username, token)`.
             Nei test si inietta un FakeClient.
@@ -97,7 +97,7 @@ class AppController:
         ricarica il suo stato nel controller, cosi' il cronometro riprende
         da dove era e il pulsante Ferma funziona subito.
 
-        Returns:
+        Restituisce:
             True se e' stata trovata e caricata una sessione attiva.
         """
         try:
@@ -249,7 +249,7 @@ class AppController:
     ) -> str:
         """Crea il client e restituisce la versione.
 
-        Args:
+        Argomenti:
             host: URL dell'istanza Kimai.
             username: nome utente API.
             token: token API.
@@ -257,10 +257,10 @@ class AppController:
                 salvato nella config; la finestra impostazioni passa lo
                 stato della casella per provare prima di salvare.
 
-        Returns:
+        Restituisce:
             Versione del server (es. "1.15").
 
-        Raises:
+        Solleva:
             KimaiAuthError: se le credenziali non sono valide.
         """
         self._client = self._client_factory(host, username, token)
@@ -309,7 +309,7 @@ class AppController:
     def select_customer(self, customer_id: int) -> List[Project]:
         """Seleziona un cliente: carica i progetti e azzera figlio.
 
-        Returns:
+        Restituisce:
             Lista di Project per il cliente selezionato.
         """
         self._customer_id = customer_id
@@ -332,7 +332,7 @@ class AppController:
     def select_project(self, project_id: int) -> List[Activity]:
         """Seleziona un progetto: carica le attivita' e azzera figlio.
 
-        Returns:
+        Restituisce:
             Lista di Activity per il progetto selezionato.
         """
         self._project_id = project_id
@@ -375,7 +375,7 @@ class AppController:
         esiste un timesheet attivo il cui begin arrotondato a 15 min
         e' <= ora corrente.
 
-        Args:
+        Argomenti:
             description: testo libero dell'attivit\u00e0. Vuoto = non inviato.
         """
         if self._timesheet_id:

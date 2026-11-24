@@ -34,7 +34,7 @@ def _select_by_id(combo, items, wanted_id) -> None:
 class MainWindow:
     """Finestra principale del client.
 
-    Args:
+    Argomenti:
         root: la finestra Tkinter di livello root.
         controller: istanza di AppController (unico detentore dello stato).
         on_open_settings: callable invocato quando l'utente apre Impostazioni.

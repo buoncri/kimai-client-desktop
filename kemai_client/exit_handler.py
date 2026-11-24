@@ -32,7 +32,7 @@ def exit_sequence(controller: Any, root: Any, tray: Any) -> None:
     Ordine: stop() -> tray.stop() -> quit() -> destroy().
     Non interrompe la sequenza per errori del server o del tray.
 
-    Args:
+    Argomenti:
         controller: oggetto con is_running() e stop().
         root: oggetto Tk root con quit() e destroy().
         tray: oggetto TrayIcon con stop().

@@ -25,7 +25,7 @@ from kemai_client.config import Config, save
 class SettingsWindow:
     """Finestra delle impostazioni.
 
-    Args:
+    Argomenti:
         parent: il widget genitore (Tk o Toplevel).
         controller: istanza di AppController.
         on_saved: callable invocato dopo un salvataggio riuscito.
@@ -200,7 +200,7 @@ class SettingsWindow:
     def cancel(self, saved: bool = False) -> None:
         """Chiude la finestra e notifica la chiusura.
 
-        Args:
+        Argomenti:
             saved: True se la configurazione e' stata appena salvata.
                 Chi non chiama `cancel` non viene notificato, quindi
                 al primo avvio non si saprebbe mai quando riprovare.

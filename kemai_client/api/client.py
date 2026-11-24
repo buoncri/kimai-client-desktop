@@ -322,7 +322,7 @@ class KimaiClient:
         contiene l'id del timesheet creato. Formato begin accettato:
         "Y-m-d H:i:s".
 
-        Args:
+        Argomenti:
             project_id: ID del progetto.
             activity_id: ID dell'attivit\u00e0.
             begin: orario di inizio. Default `datetime.now()`.

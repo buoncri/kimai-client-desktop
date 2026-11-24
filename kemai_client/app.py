@@ -33,10 +33,10 @@ def bootstrap_after_settings(saved: bool) -> str:
     processo vivo, senza finestra e senza tray, cioe' un'applicazione che
     "si avvia" e non mostra niente.
 
-    Args:
+    Argomenti:
         saved: True se l'utente ha salvato la configurazione.
 
-    Returns:
+    Restituisce:
         "open" per aprire la finestra principale, "quit" per uscire.
     """
     return "open" if saved else "quit"
@@ -49,13 +49,13 @@ def make_close_handler(controller, root, tray, close_to_tray: bool):
     raggiungibile da un test: quando stava dentro `main()` chiamava
     `exit_sequence` senza importarla, e la X non usciva dal tutto.
 
-    Args:
+    Argomenti:
         controller: istanza di AppController.
         root: finestra Tkinter root.
         tray: istanza di TrayIcon.
         close_to_tray: True se l'utente ha scelto "Chiudi nel vassoio".
 
-    Returns:
+    Restituisce:
         Callable senza argomenti da passare a `root.protocol`.
     """
     behavior = close_behaviour(close_to_tray)

@@ -38,10 +38,10 @@ def toggle_label(is_running: bool) -> str:
     testabile senza aprire il vassoio e senza dipendere dagli interni
     di pystray.
 
-    Args:
+    Argomenti:
         is_running: True se un'attivita' e' in corso.
 
-    Returns:
+    Restituisce:
         "Ferma" se in corso, "Avvia" altrimenti.
     """
     return t("btn_stop") if is_running else t("btn_start")
@@ -53,10 +53,10 @@ def close_behaviour(close_to_tray: bool) -> str:
     Funzione pura: la correttezza della sua uscita distingue un'uscita
     pulita da un processo zombie invisibile.
 
-    Args:
+    Argomenti:
         close_to_tray: True se l'utente ha selezionato "Chiudi nel vassoio".
 
-    Returns:
+    Restituisce:
         "withdraw" se l'app si nasconde nel vassoio,
         "destroy" se la finestra viene distrutta e il processo termina.
     """
@@ -71,7 +71,7 @@ def build_icon() -> Image.Image:
     Non crea file sul filesystem: l'icona è un `PIL.Image.Image`
     in memoria, costruita con `ImageDraw`.
 
-    Returns:
+    Restituisce:
         Un'immagine quadrata 64×64 con un piccolo ottagono stilizzato
         al centro.
     """
@@ -96,7 +96,7 @@ class TrayIcon:
     I callback del menu passano da `root.after(0, fn)` prima di
     toccare qualsiasi widget.
 
-    Args:
+    Argomenti:
         controller: istanza di AppController.
         root: finestra Tkinter root.
     """
@@ -160,12 +160,12 @@ def build_menu(controller, root: tk.Tk, on_quit) -> pystray.Menu:
     Ogni callback passa da `root.after(0, fn)`: arriva sul thread
     pystray, non deve mai toccare widget Tkinter direttamente.
 
-    Args:
+    Argomenti:
         controller: istanza di AppController.
         root: finestra Tkinter root.
         on_quit: callable invocato per uscire (ferma timesheet e tray).
 
-    Returns:
+    Restituisce:
         Un `pystray.Menu` con voci "Mostra", "Avvia/Ferma", "Esci".
     """
     import tkinter as tk

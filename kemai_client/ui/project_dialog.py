@@ -22,7 +22,7 @@ from kemai_client.models import Project
 class ProjectDialog:
     """Dialog modale per la creazione di un nuovo progetto.
 
-    Args:
+    Argomenti:
         parent: il widget genitore (Tk o Toplevel).
         controller: istanza di AppController.
         preselected_customer: ID del cliente pre-selezionato, se già attivo.

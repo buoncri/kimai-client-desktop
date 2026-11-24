@@ -16,12 +16,12 @@ def lerp(a: float, b: float, t: float) -> float:
 
     Il piano cartesiano usa y verso l'alto (sentito matematico standard).
 
-    Args:
+    Argomenti:
         a: valore di partenza.
         b: valore di arrivo.
         t: parametro di interpolazione (clamp a [0, 1]).
 
-    Returns:
+    Restituisce:
         Il valore interpolato tra a e b.
 
     Examples:
@@ -43,13 +43,13 @@ def polyline_length(points: list[tuple[float, float]]) -> float:
 
     Somma le distanze euclidee tra punti consecutivi.
 
-    Args:
+    Argomenti:
         points: lista di tuple (x, y).
 
-    Returns:
+    Restituisce:
         Lunghezza totale della spezzata.
 
-    Raises:
+    Solleva:
         ValueError: se `points` contiene meno di 2 punti.
 
     Examples:
@@ -72,13 +72,13 @@ def polygon_area(points: list[tuple[float, float]]) -> float:
 
     Applicabilmente la formula di shoelace.
 
-    Args:
+    Argomenti:
         points: lista di tuple (x, y) dei vertici del polygono.
 
-    Returns:
+    Restituisce:
         Area del polygono. Indice ciclico: il punto dopo il ultimo è il primo.
 
-    Raises:
+    Solleva:
         ValueError: se `points` contiene meno di 3 punti.
 
     Examples:
@@ -121,16 +121,16 @@ def circle_points(cx: float, cy: float, r: float, n: int) -> list[tuple[float, f
 
     Il piano cartesiano usa y verso l'alto (sentito matematico standard).
 
-    Args:
+    Argomenti:
         cx: coordinata x del centro.
         cy: coordinata y del centro.
         r:  raggio (deve essere > 0).
         n:  numero di vertici (deve essere un intero positivo).
 
-    Returns:
+    Restituisce:
         Lista di tuple (x, y) con n punti.
 
-    Raises:
+    Solleva:
         TypeError: se n non è un intero.
         ValueError: se n <= 0.
 

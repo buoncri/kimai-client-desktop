@@ -43,10 +43,10 @@ def setup_logging(path: Union[Path, str, None] = None) -> logging.Logger:
     non lo aggiunge di nuovo. Senza questo controllo ogni chiamata
     successiva (es. restart dell'app) duplicherebbe le righe.
 
-    Args:
+    Argomenti:
         path: Percorso del file. Se None, usa default_log_path().
 
-    Returns:
+    Restituisce:
         Il logger `kimai` con l'handler configurato.
     """
     if path is None:
@@ -95,12 +95,12 @@ def log_exception(logger: logging.Logger, exc: Exception, context: str) -> str:
     Restituisce la stringa dell'eccezione (messaggio breve italiano)
     pronta per essere mostrata all'utente.
 
-    Args:
+    Argomenti:
         logger: Il logger kimai configurato da setup_logging().
         exc: L'eccezione da registrare.
         context: Contesto breve (es. "start_timesheet").
 
-    Returns:
+    Restituisce:
         str(exc): messaggio breve, senza stack trace.
     """
     # Rimuove la catena delle eccezioni perche' un HTTPError

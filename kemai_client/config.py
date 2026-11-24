@@ -51,19 +51,20 @@ def default_path() -> Path:
 
 
 def _coerce_field(name: str, value: Any, type_hint, default_value: Any) -> tuple[str, Any]:
-    """Coerces a single field value to its expected type.
+    """Converte un singolo valore di campo nel tipo atteso.
 
-    Returns (field_name, coerced_value). If coercion fails (incompatible type
-    or None on a non-nullable field), *default_value* is returned.
+    Restituisce (nome_campo, valore_convertito). Se la conversione fallisce
+    (tipo non compatibile o None su un campo non nullabile), viene restituito
+    *default_value*.
 
-    For nullable fields (e.g. int | None), None is accepted as valid.
+    I campi nullabili (es. int | None) accettano None come valore valido.
 
-    This prevents a Config() from raising TypeError when the
-    stored JSON has an incompatible value type (e.g. a string
-    where an int is expected).
+    Questo evita che una Config() sollevi TypeError quando il JSON salvato
+    ha un tipo di valore non compatibile (es. una stringa dove si aspetta un
+    intero).
     """
-    # For nullable fields (int | None), None is valid → keep it.
-    # A field is nullable when its default is None (e.g. last_customer_id: int | None = None).
+    # Per i campi nullabili (int | None), None e' valido → mantenilo.
+    # Un campo e' nullabile quando il suo default e' None (es. last_customer_id: int | None = None).
     if value is None and default_value is None:
         return (name, None)
 
@@ -89,10 +90,11 @@ def _coerce_field(name: str, value: Any, type_hint, default_value: Any) -> tuple
 
 
 def _load_from_dict(data: dict) -> Config:
-    """Build a Config from a dict, coercing each field to its expected type.
+    """Costruisce una Config da un dizionario, convertendo ogni campo nel
+    tipo atteso.
 
-    Fields with an incompatible type silently fall back to the
-    dataclass default, so the app never crashes on a corrupted config.
+    I campi di tipo non compatibile rientrano silenziosamente nel valore
+    di default del dataclass, così l'app non si blocca su una config corrotta.
     """
     fields: dict[str, tuple[type, Any]] = {
         "host": (str, ""),
@@ -130,7 +132,7 @@ def load(path: Path | str | None = None) -> Config:
     aspetta un intero), il valore viene ignorato e usato il default
     della dataclass.
 
-    Args:
+    Argomenti:
         path: Percorso del file. Se None, usa default_path().
     """
     if path is None:
@@ -165,7 +167,7 @@ def save(config: Config, path: Path | str | None = None) -> None:
 
     Se la directory di destinazione non esiste, la crea con makedirs.
 
-    Args:
+    Argomenti:
         config: La configurazione da salvare.
         path: Percorso del file. Se None, usa default_path().
     """

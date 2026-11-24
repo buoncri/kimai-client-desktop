@@ -20,10 +20,10 @@ def format_duration(seconds: int) -> str:
     Valori negativi vengono clamped a zero; oltre 99 ore il campo
     ore non va a capo (es. `"100:00:00"`).
 
-    Args:
+    Argomenti:
         seconds: secondi totali da formattare.
 
-    Returns:
+    Restituisce:
         Stringa della forma ``HH:MM:SS``.
     """
     if seconds < 0:
@@ -41,12 +41,12 @@ def draw_octagon(canvas: tk.Canvas, cx: float, cy: float, r: float) -> str:
     orario (angolo negativo di *y* perché il sistema di coordinate di
     Tkinter ha l'asse y invertito).
 
-    Args:
+    Argomenti:
         canvas: il Canvas su cui disegnare.
         cx, cy: coordinate del centro.
         r: raggio dell'ottagono.
 
-    Returns:
+    Restituisce:
         L'ID dell'oggetto creato sul Canvas.
     """
     points = octagon_points(cx, cy, r)
@@ -62,7 +62,7 @@ class StopButton(tk.Canvas):
     Usa un Canvas perché `ttk.Button` non disegna poligoni, e la
     fedeltà visiva rispetto al client KEMAI è un requisito.
 
-    Args:
+    Argomenti:
         master: il master Tkinter.
         on_click: callback invocato alla pressione del pulsante.
         width: larghezza (default 72).
@@ -121,7 +121,7 @@ class StopButton(tk.Canvas):
         gli eventi (inclusi quelli legati con tag_bind). Il pulsante
         resta sempre cliccabile anche quando è disabilitato.
 
-        Args:
+        Argomenti:
             enabled: True per l'aspetto normale, False per quello spento.
         """
         if enabled:

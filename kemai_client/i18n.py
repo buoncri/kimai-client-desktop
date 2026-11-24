@@ -60,11 +60,11 @@ STRINGS: dict[str, str] = {
 def t(key: str, **kwargs: object) -> str:
     """Formatta una stringa con le keyword arguments.
 
-    Args:
+    Argomenti:
         key: Chiave nel dizionario STRINGS.
         **kwargs: Parametri da interpolare, es. ``version="1.15"``.
 
-    Raises:
+    Solleva:
         KeyError: se la chiave non esiste nel dizionario.
     """
     template = STRINGS[key]
