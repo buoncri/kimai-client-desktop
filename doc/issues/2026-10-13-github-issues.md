@@ -6,9 +6,9 @@
 - Scaricato il: 2026-10-13 (via API `GET /repos/buoncri/kimai-client-desktop/issues`)
 - Issue totali: 1 (aperte: 1)
 
-| # | Stato | Titolo | Autore | Aperta |
-|---|-------|--------|--------|--------|
-| [#1](https://github.com/buoncri/kimai-client-desktop/issues/1) | open | Pulsante Ferma non funziona | @edi1973 | 2026-10-13 |
+| # | Stato | Titolo | Autore | Aperta | Note |
+|---|-------|--------|--------|--------|------|
+| [#1](https://github.com/buoncri/kimai-client-desktop/issues/1) | open | Pulsante Ferma non funziona | @edi1973 | 2026-10-13 | ✅ Fix originale (ffece5b, 2026-10-15) + nuove richieste implementate (2026-11-24) |
 
 ---
 
