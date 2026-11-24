@@ -313,7 +313,7 @@ class KimaiClient:
         return activities
 
     def start_timesheet(
-        self, project_id: int, activity_id: int, begin: datetime.datetime | None = None
+        self, project_id: int, activity_id: int, begin: datetime.datetime | None = None, description: str = ""
     ) -> int:
         """Avvia un timesheet: POST sulla collezione con il campo begin.
 
@@ -321,17 +321,26 @@ class KimaiClient:
         esistono (405); la creazione e' POST /api/timesheets e la risposta
         contiene l'id del timesheet creato. Formato begin accettato:
         "Y-m-d H:i:s".
+
+        Args:
+            project_id: ID del progetto.
+            activity_id: ID dell'attivit\u00e0.
+            begin: orario di inizio. Default `datetime.now()`.
+            description: testo libero dell'attivit\u00e0. Vuoto = non inviato.
         """
         if begin is None:
             begin = datetime.datetime.now()
+        json_payload: dict[str, Any] = {
+            "project": project_id,
+            "activity": activity_id,
+            "begin": begin.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        if description:
+            json_payload["description"] = description
         payload = self._request(
             "POST",
             endpoints.TIMESHEETS,
-            json={
-                "project": project_id,
-                "activity": activity_id,
-                "begin": begin.strftime("%Y-%m-%d %H:%M:%S"),
-            },
+            json=json_payload,
         )
         if isinstance(payload, dict):
             identifier = _get_id(payload)

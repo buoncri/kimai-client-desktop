@@ -192,6 +192,20 @@ class TestParsing:
         assert payload["project"] == 9
         assert payload["activity"] == 3
 
+    def test_start_sends_description_in_json(self):
+        client, transport = make_client(FakeResponse(json_data={"id": 42}))
+        client.start_timesheet(9, 3, description="Lavoro di analisi")
+        payload = transport.last["json"]
+        assert payload["project"] == 9
+        assert payload["activity"] == 3
+        assert payload["description"] == "Lavoro di analisi"
+
+    def test_start_omits_empty_description(self):
+        client, transport = make_client(FakeResponse(json_data={"id": 42}))
+        client.start_timesheet(9, 3)
+        payload = transport.last["json"]
+        assert "description" not in payload or payload["description"] == ""
+
     def test_create_project_sends_name_and_customer(self):
         client, transport = make_client(FakeResponse(json_data={"id": 5, "name": "Nuovo"}))
         project = client.create_project("Nuovo", 1)

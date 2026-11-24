@@ -115,6 +115,15 @@ class MainWindow:
         self._combo_activity.grid(row=0, column=1, sticky="we", padx=(4, 0))
         self._combo_activity.bind("<<ComboboxSelected>>", self._on_activity_selected)
 
+        # --- Riga 3.5: Descrizione ---
+        self._frame_description = ttk.Frame(self._container)
+        self._frame_description.grid(row=3, column=0, sticky="we", pady=2)
+        ttk.Label(self._frame_description, text=t("label_description")).grid(
+            row=0, column=0, sticky="e"
+        )
+        self._entry_description = ttk.Entry(self._frame_description)
+        self._entry_description.grid(row=0, column=1, sticky="we", padx=(4, 0))
+
         # --- StopButton (centrato) ---
         self._stop_button = StopButton(
             self._container,
@@ -122,11 +131,11 @@ class MainWindow:
             width=72,
             height=72,
         )
-        self._stop_button.grid(row=3, column=0, pady=8)
+        self._stop_button.grid(row=4, column=0, pady=8)
 
         # --- Avviato il ---
         self._frame_started = ttk.Frame(self._container)
-        self._frame_started.grid(row=4, column=0, sticky="we", pady=2)
+        self._frame_started.grid(row=5, column=0, sticky="we", pady=2)
         ttk.Label(self._frame_started, text=t("label_started_at")).grid(
             row=0, column=0, sticky="e"
         )
@@ -139,7 +148,7 @@ class MainWindow:
             text="00:00:00",
             font=("", 20, "bold"),
         )
-        self._lbl_elapsed.grid(row=5, column=0, pady=4)
+        self._lbl_elapsed.grid(row=6, column=0, pady=4)
 
         # --- Avviso (troncatura) ---
         self._lbl_truncated = ttk.Label(
@@ -147,7 +156,7 @@ class MainWindow:
             text="",
             foreground="orange",
         )
-        self._lbl_truncated.grid(row=6, column=0, pady=2)
+        self._lbl_truncated.grid(row=7, column=0, pady=2)
 
         # --- Subscribe: ogni cambiamento dello stato richiama refresh() ---
         self._controller.subscribe(self.refresh)
@@ -194,7 +203,13 @@ class MainWindow:
         self._controller.select_activity(activity_id)
 
     def _on_toggle(self) -> None:
-        self._controller.toggle()
+        description = self._entry_description.get()
+        try:
+            self._controller.set_description(description)
+            self._controller.toggle()
+        except RuntimeError:
+            self._entry_description.delete(0, tk.END)
+            self._entry_description.insert(0, self._controller.last_error)
 
     # --- Aggiornamento UI ---
 
@@ -202,6 +217,9 @@ class MainWindow:
         """Rilegge lo stato dal controller e aggiorna tutti i widget."""
         self._refresh_combos()
         self._refresh_state()
+        # La descrizione si resetta quando il timesheet viene chiuso.
+        if not self._controller.is_running():
+            self._entry_description.delete(0, tk.END)
 
     def _refresh_combos(self) -> None:
         """Aggiorna i combobox con le liste del controller."""

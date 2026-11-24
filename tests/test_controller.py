@@ -29,6 +29,7 @@ class FakeClient:
         self.calls: list = []
         self.last_list_truncated = False
         self._created_projects: dict[int, list[Project]] = {}  # customer_id -> list
+        self._active_timesheet = None
 
     def record(self, method, **kwargs):
         self.calls.append((method, kwargs))
@@ -69,12 +70,13 @@ class FakeClient:
             ]
         return []
 
-    def start_timesheet(self, project_id, activity_id, begin=None):
+    def start_timesheet(self, project_id, activity_id, begin=None, description=""):
         self.record(
             "start_timesheet",
             project_id=project_id,
             activity_id=activity_id,
             begin=begin,
+            description=description,
         )
         return 42
 
@@ -521,7 +523,8 @@ class TestCheckActiveSession:
         assert ctrl.is_running()
         assert ctrl._timesheet_id == 42
         assert ctrl._started_wall == datetime.datetime(2026, 10, 16, 8, 30)
-        assert ctrl._started_at > 0
+        # _started_at dipende dal clock, verifichiamo l'output utente (elapsed).
+        assert ctrl.elapsed_seconds() > 0
 
     def test_check_active_session_elapsed_uses_server_begin(self):
         """_started_at deve riflettere il begin del server, non l'orologio locale."""
@@ -668,6 +671,134 @@ class TestToggleThreeWays:
         method_names = [c[0] for c in client.calls]
         assert "stop_timesheet" in method_names
         assert ctrl.is_running() is False
+
+
+class TestDescription:
+    """Test del campo descrizione."""
+
+    def test_start_sends_description(self):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.start(description="Lavoro di analisi")
+        method, kwargs = client.calls[-1]
+        assert method == "start_timesheet"
+        assert kwargs["description"] == "Lavoro di analisi"
+
+    def test_start_omits_empty_description(self):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.start()
+        method, kwargs = client.calls[-1]
+        assert method == "start_timesheet"
+        assert kwargs["description"] == ""
+
+    def test_stop_clears_description(self):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.start(description="Lavoro")
+        assert ctrl._description == "Lavoro"
+        ctrl.stop()
+        assert ctrl._description == ""
+
+    def test_toggle_passes_description(self):
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        ctrl.set_description("Test toggle")
+        ctrl.toggle()
+        method, kwargs = client.calls[-1]
+        assert method == "start_timesheet"
+        assert kwargs["description"] == "Test toggle"
+
+
+class TestOverlap:
+    """Test della verifica sovrapposizione 15 minuti (RF-06)."""
+
+    def test_start_fails_when_active_session_overlaps(self):
+        """Se un timesheet attivo ha begin arrotondato <= ora corrente, start() solleva."""
+        import datetime
+
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        # Simula un timesheet attivo con begin 10 minuti fa (arrotondato a 15 min)
+        past_begin = datetime.datetime.now() - datetime.timedelta(minutes=10)
+        client.set_active_timesheet({"id": 1, "begin": past_begin.strftime("%Y-%m-%d %H:%M:%S")})
+        with pytest.raises(RuntimeError) as exc:
+            ctrl.start()
+        assert "ancora in corso" in str(exc.value)
+
+    def test_start_succeeds_when_no_overlap(self):
+        """Timesheet attivo con begin nel futuro (arrotondato > ora corrente) non blocca."""
+        import datetime
+
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        # Begin tra 10 minuti -> arrotondato a +15 min > ora corrente
+        future_begin = datetime.datetime.now() + datetime.timedelta(minutes=10)
+        client.set_active_timesheet({"id": 1, "begin": future_begin.strftime("%Y-%m-%d %H:%M:%S")})
+        ctrl.start()
+        assert ctrl.is_running()
+
+    def test_start_exactly_on_15min_boundary(self):
+        """Begin esatto a confine 15 min, ora corrente e' dopo: overlap."""
+        import datetime
+
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        # Begin 20 min fa, arrotondato al confine 15 min: es. 13:45.
+        # Arrotondamento UP da 13:45 -> 14:00. Se ora e' 14:05: 14:00 <= 14:05 -> overlap.
+        past_begin = datetime.datetime.now() - datetime.timedelta(minutes=20)
+        past_begin = past_begin.replace(second=0, minute=past_begin.minute - past_begin.minute % 15)
+        client.set_active_timesheet({"id": 1, "begin": past_begin.strftime("%Y-%m-%d %H:%M:%S")})
+        with pytest.raises(RuntimeError):
+            ctrl.start()
+
+    def test_start_with_no_active_session(self):
+        """Nessun timesheet attivo -> start OK."""
+        client = FakeClient()
+        ctrl = AppController(lambda h, u, t: client)
+        ctrl._connect(client)
+        ctrl._load_customers()
+        ctrl.select_customer(1)
+        ctrl.select_project(10)
+        ctrl.select_activity(100)
+        client.set_active_timesheet(None)
+        ctrl.start()
+        assert ctrl.is_running()
 
 
 class TestStopWhileCascadeChanges:

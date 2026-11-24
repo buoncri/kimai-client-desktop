@@ -71,6 +71,7 @@ class AppController:
         self._started_wall: Optional[datetime.datetime] = None
         self._truncated: bool = False
         self._last_error_msg: str = ""
+        self._description: str = ""
 
         # Subscriber.
         self._subscribers: List[Callable[[], None]] = []
@@ -369,18 +370,34 @@ class AppController:
             and not self._timesheet_id
         )
 
-    def start(self) -> None:
-        """Avvia un timesheet. Solleva RuntimeError se gia' in corso."""
+    def start(self, description: str = "") -> None:
+        """Avvia un timesheet. Solleva RuntimeError se gia' in corso o se
+        esiste un timesheet attivo il cui begin arrotondato a 15 min
+        e' <= ora corrente.
+
+        Args:
+            description: testo libero dell'attivit\u00e0. Vuoto = non inviato.
+        """
         if self._timesheet_id:
             raise RuntimeError(t("err_active"))
+
+        # Verifica sovrapposizione con il blocco di 15 minuti (RF-06):
+        # se esiste un timesheet attivo il cui begin arrotondato a 15 min
+        # e' <= ora corrente, l'utente deve prima fermare l'attivit\u00e0.
+        active = self._client.get_active_timesheet()
+        if active is not None:
+            begin = datetime.datetime.strptime(active["begin"], "%Y-%m-%d %H:%M:%S")
+            if self._overlaps_15min(begin):
+                raise RuntimeError(t("err_overlap"))
 
         begin = datetime.datetime.now()
         try:
             self._timesheet_id = self._client.start_timesheet(
-                self._project_id, self._activity_id, begin=begin
+                self._project_id, self._activity_id, begin=begin, description=description
             )
             self._started_at = self._clock()
             self._started_wall = begin
+            self._description = description
             self._last_error_msg = ""
             self.notify()
         except KimaiError as exc:
@@ -396,6 +413,7 @@ class AppController:
             # contatore continua a salire anche senza attivita' in corso.
             self._started_at = 0.0
             self._started_wall = None
+            self._description = ""
             self._last_error_msg = ""
             self.notify()
         except KimaiNetworkError:
@@ -440,11 +458,15 @@ class AppController:
         if self.is_running():
             self.stop()
         elif self.can_start():
-            self.start()
+            self.start(self._description)
+
+    def set_description(self, description: str) -> None:
+        """Imposta la descrizione per il prossimo avvio."""
+        self._description = description
 
     # --- Errori ---
 
-    def _handle_kimai_error(self, exc: KimaiError, context: str) -> None:
+    def _handle_kimai_error(self, exc: KimaiError, context: str) -> str:
         """Passa un errore del client attraverso log_exception.
 
         Registra il dettaglio tecnico nel log e assegna il messaggio
@@ -452,3 +474,22 @@ class AppController:
         """
         self._last_error_msg = log_exception(self._logger, exc, context)
         self.notify()
+
+    def _overlaps_15min(self, begin: datetime.datetime) -> bool:
+        """Verifica se un timesheet attivo si sovrappone al prossimo blocco di 15 min.
+
+        Kimai arrotonda il begin per eccesso alle 15 min. Se l'arrotondamento
+        e' <= ora corrente, il nuovo timesheet si sovrapporrebbe.
+        """
+        now = datetime.datetime.now()
+        minutes = begin.minute
+        remainder = minutes % 15
+        if remainder == 0:
+            next_minute = minutes
+        else:
+            next_minute = minutes - remainder + 15
+        if next_minute >= 60:
+            rounded = begin.replace(hour=begin.hour + 1, minute=0, second=0)
+        else:
+            rounded = begin.replace(minute=next_minute, second=0)
+        return rounded <= now

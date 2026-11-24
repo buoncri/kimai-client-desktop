@@ -19,6 +19,7 @@ STRINGS: dict[str, str] = {
     "label_customer": "Cliente",
     "label_project": "Progetto",
     "label_activity": "Attività",
+    "label_description": "Descrizione",
     "label_started_at": "Avviato il",
     "btn_start": "Avvia",
     "btn_stop": "Ferma",
@@ -45,6 +46,7 @@ STRINGS: dict[str, str] = {
     "err_auth": "Autenticazione non valida. Verifica host e token.",
     "err_response": "Risposta non valida dal server",
     "err_active": "Un'attività è già in corso",
+    "err_overlap": "L'attività precedente è ancora in corso. Ferma prima.",
     "err_name_empty": "Il nome non può essere vuoto",
 
     # --- System tray ---
